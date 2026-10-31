@@ -1,0 +1,23 @@
+# deps / build
+node_modules/
+dist/
+target/
+*.tsbuildinfo
+
+# tauri
+apps/launcher/src-tauri/gen/schemas/
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# env
+.env
+.env.*
+*.key
+
+# local tooling
+.claude/launch.json
