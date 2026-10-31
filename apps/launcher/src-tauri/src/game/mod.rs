@@ -157,7 +157,13 @@ where
 
     Ok(LaunchPlan {
         java,
-        args: build_args(&v, settings, log_config, &vars),
+        args: build_args(
+            &v,
+            settings,
+            target.loader == LoaderKind::Forge,
+            log_config,
+            &vars,
+        ),
     })
 }
 
@@ -172,6 +178,7 @@ fn substitute(arg: &str, vars: &HashMap<&str, String>) -> String {
 fn build_args(
     v: &VersionJson,
     settings: &Settings,
+    old_forge: bool,
     log_config: Option<String>,
     vars: &HashMap<&str, String>,
 ) -> Vec<String> {
@@ -187,7 +194,10 @@ fn build_args(
         Some(a) if !a.jvm.is_empty() => jvm.extend(a.jvm.iter().flat_map(|x| x.values())),
         // Versions before 1.13 list no JVM arguments.
         _ => {
-            if cfg!(target_os = "macos") {
+            // On macOS, old Forge must not get -XstartOnFirstThread: with its launchwrapper the
+            // GL context ends up on the wrong thread ("glCheckFramebufferStatus returned
+            // unknown status:0"). It runs on the patched LWJGL 2 instead (see loaders::forge).
+            if cfg!(target_os = "macos") && !old_forge {
                 jvm.push("-XstartOnFirstThread".into());
             }
             jvm.push("-Djava.library.path=${natives_directory}".into());

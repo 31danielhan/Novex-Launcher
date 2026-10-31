@@ -113,7 +113,11 @@ where
         }
         LoaderKind::Vanilla => unreachable!(),
     };
-    Ok(version::merge(vanilla, profile))
+    let mut merged = version::merge(vanilla, profile);
+    if cfg!(target_os = "macos") && kind == LoaderKind::Forge {
+        forge::patch_lwjgl2_for_macos(&mut merged);
+    }
+    Ok(merged)
 }
 
 #[tauri::command]

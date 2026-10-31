@@ -58,7 +58,7 @@ Add a loader (`fabric`, `quilt`, `forge`, `neoforge`) and optionally a loader ve
 cargo run --example launch -- 1.20.1 /tmp/novex-smoke 90 forge
 ```
 
-Set `NOVEX_JVM_ARGS` to try extra JVM flags.
+Set `NOVEX_JVM_ARGS` to try extra JVM flags, or `NOVEX_JAVA` to use a specific Java binary.
 
 ## Loader support
 
@@ -66,10 +66,15 @@ Set `NOVEX_JVM_ARGS` to try extra JVM flags.
 |---|---|---|
 | Fabric | 1.14+, and 1.3–1.13.2 through Legacy Fabric | Tested on 26.3 and 1.8.9 |
 | Quilt | Whatever Quilt publishes | Tested on 1.21.1. Quilt has no build that runs on 26.3 yet |
-| Forge | 1.13+ via the installer's processors; 1.12.2 and older via `versionInfo` | Tested on 26.3 and 1.20.1 |
+| Forge | 1.13+ via the installer's processors; 1.12.2 and older via `versionInfo` | Tested on 26.3, 1.20.1 and 1.8.9 |
 | NeoForge | 1.20.2+ | Tested on 26.3 |
 
-**Known issue:** Forge 1.8.9 (and probably other Forge versions up to 1.12.2) installs fine but crashes on Apple Silicon Macs with `glCheckFramebufferStatus returned unknown status:0`. It runs under Rosetta with Intel Java 8. Turning off Forge's splash screen and `-Dforge.forceNoStencil=true` didn't help. Legacy Fabric 1.8.9 works on the same machine, so the next step is to try its patched LWJGL build for old Forge. This hasn't been tested on Intel Macs, Windows or Linux.
+**Old Forge on macOS:** Forge 1.12.2 and older gets two special cases on macOS:
+
+- It launches **without** `-XstartOnFirstThread`. Otherwise Forge's launchwrapper leaves the OpenGL context on the wrong thread and startup fails with `glCheckFramebufferStatus returned unknown status:0`.
+- It uses [Legacy Fabric's LWJGL 2 fork](https://maven.legacyfabric.net/) instead of Mojang's LWJGL 2.9.2. Without the first-thread flag, 2.9.2 randomly crashes while creating the window (SIGSEGV in `MacOSXContextImplementation.setView`).
+
+Vanilla and Fabric keep the flag and Mojang's libraries.
 
 ## Build installers
 

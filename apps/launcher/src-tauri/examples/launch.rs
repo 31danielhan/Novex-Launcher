@@ -78,9 +78,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         game_dir: &game_dir,
         natives_dir: &natives,
     };
-    // NOVEX_JVM_ARGS adds JVM flags, for trying out fixes.
+    // NOVEX_JVM_ARGS adds JVM flags and NOVEX_JAVA picks a Java binary, for trying out fixes.
     let settings = Settings {
         jvm_args: std::env::var("NOVEX_JVM_ARGS").unwrap_or_default(),
+        java_path: std::env::var("NOVEX_JAVA").ok(),
         ..Settings::default()
     };
     let plan = game::prepare(&http, &paths, &settings, &target, &creds, |stage, d, t| {

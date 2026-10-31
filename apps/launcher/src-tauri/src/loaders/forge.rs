@@ -240,6 +240,39 @@ where
     Ok(profile)
 }
 
+/// Legacy Fabric's maintained LWJGL 2 fork (Intel and Apple Silicon natives).
+const LWJGL2_FORK: &str = "2.9.4+legacyfabric.17";
+const LWJGL2_FORK_MAVEN: &str = "https://maven.legacyfabric.net/";
+
+/// Whether `v` runs on LWJGL 2 (Minecraft 1.12.2 and older).
+pub fn uses_lwjgl2(v: &VersionJson) -> bool {
+    v.libraries
+        .iter()
+        .any(|l| l.name.starts_with("org.lwjgl.lwjgl:"))
+}
+
+/// Old Forge on macOS has to run without -XstartOnFirstThread (see `game::build_args`), and
+/// Mojang's 2014 LWJGL 2.9.2 then crashes creating the window off the main thread
+/// (SIGSEGV in MacOSXContextImplementation.setView). Legacy Fabric's fork handles that.
+pub fn patch_lwjgl2_for_macos(v: &mut VersionJson) {
+    if !uses_lwjgl2(v) {
+        return;
+    }
+    v.libraries
+        .retain(|l| !l.name.starts_with("org.lwjgl.lwjgl:"));
+    let fork: Vec<Library> = serde_json::from_value(serde_json::json!([
+        { "name": format!("org.lwjgl.lwjgl:lwjgl:{LWJGL2_FORK}"), "url": LWJGL2_FORK_MAVEN },
+        { "name": format!("org.lwjgl.lwjgl:lwjgl_util:{LWJGL2_FORK}"), "url": LWJGL2_FORK_MAVEN },
+        {
+            "name": format!("org.lwjgl.lwjgl:lwjgl-platform:{LWJGL2_FORK}"),
+            "url": LWJGL2_FORK_MAVEN,
+            "natives": { "linux": "natives-linux", "osx": "natives-osx", "windows": "natives-windows" }
+        }
+    ]))
+    .expect("static library list is valid");
+    v.libraries.splice(0..0, fork);
+}
+
 /// Forge 1.12.2 and older: copy the universal jar into libraries and use `versionInfo`.
 fn install_legacy(paths: &Paths, installer: &Path, raw: &serde_json::Value) -> Result<Vec<u8>> {
     let install = &raw["install"];
