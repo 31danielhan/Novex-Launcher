@@ -4,7 +4,7 @@ import { Button, EmptyState, PageHeader } from "../components/ui";
 import { InstanceCard } from "../components/InstanceCard";
 
 export function InstancesScreen() {
-  const { instances, openNewInstance } = useLauncher();
+  const { instances, openNewInstance, importModpack, pack } = useLauncher();
   const create = (
     <Button variant="primary" icon={Plus} onClick={() => openNewInstance(true)}>
       New instance
@@ -17,7 +17,13 @@ export function InstancesScreen() {
         subtitle="Each instance has its own version, worlds, mods and settings."
         actions={
           <>
-            <Button variant="ghost" icon={FolderInput} disabled title="Coming soon">
+            <Button
+              variant="ghost"
+              icon={FolderInput}
+              onClick={importModpack}
+              disabled={!!pack}
+              title="Import a .mrpack or CurseForge modpack .zip"
+            >
               Import
             </Button>
             {create}
@@ -34,7 +40,7 @@ export function InstancesScreen() {
         <EmptyState
           icon={Boxes}
           title="No instances"
-          body="Create a vanilla or modded instance with Fabric, Quilt, Forge or NeoForge."
+          body="Create a vanilla or modded instance, install a modpack from Browse, or import a .mrpack or CurseForge .zip."
           action={create}
         />
       )}

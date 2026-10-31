@@ -1,9 +1,10 @@
 import { useEffect } from "react";
-import { Plus, Search, UserRound, X } from "lucide-react";
+import { CheckCircle2, Loader2, Plus, Search, UserRound, X } from "lucide-react";
 import { Sidebar } from "./components/Sidebar";
 import { AccountsDialog, Avatar } from "./components/AccountsDialog";
 import { NewInstanceDialog } from "./components/NewInstanceDialog";
 import { LogsDialog } from "./components/LogsDialog";
+import { ContentDialog } from "./components/ContentDialog";
 import { InstanceSettingsDialog } from "./components/InstanceSettingsDialog";
 import { progressLabel } from "./components/InstanceCard";
 import { useApp, type Screen } from "./store";
@@ -65,7 +66,7 @@ function TopBar({ title }: { title: string }) {
 }
 
 function StatusBar() {
-  const { status, instances, error, setError } = useLauncher();
+  const { status, instances, error, setError, notice, setNotice, pack } = useLauncher();
   const launching = Object.entries(status).find(([, s]) => s.state === "launching");
   const name = launching && instances.find((i) => i.id === launching[0])?.name;
 
@@ -81,6 +82,33 @@ function StatusBar() {
           >
             <X size={14} />
           </button>
+        </div>
+      )}
+      {notice && (
+        <div className="hairline pointer-events-auto flex animate-[fade_150ms_ease-out] items-start gap-3 rounded-xl border bg-surface px-4 py-3 shadow-xl">
+          <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-success" />
+          <p className="select-text text-[13px]">{notice}</p>
+          <button aria-label="Dismiss" onClick={() => setNotice(null)} className="text-muted hover:text-fg">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+      {pack && (
+        <div className="hairline w-72 rounded-xl border bg-surface px-4 py-3 shadow-xl">
+          <div className="flex items-center gap-2 text-[12px]">
+            <Loader2 size={14} className="shrink-0 animate-spin text-muted" />
+            <span className="truncate font-medium">{pack.title}</span>
+          </div>
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-fg/10">
+            <div
+              className={pack.total ? "h-full rounded-full bg-success transition-all" : "h-full w-1/3 animate-pulse rounded-full bg-success"}
+              style={pack.total ? { width: `${(pack.done / pack.total) * 100}%` } : undefined}
+            />
+          </div>
+          <p className="mt-1.5 truncate text-[11px] text-muted">
+            {pack.stage}
+            {pack.total > 0 && ` · ${pack.done}/${pack.total}`}
+          </p>
         </div>
       )}
       {launching && (
@@ -116,6 +144,7 @@ export default function App() {
       <AccountsDialog />
       <NewInstanceDialog />
       <LogsDialog />
+      <ContentDialog />
       <InstanceSettingsDialog />
     </div>
   );

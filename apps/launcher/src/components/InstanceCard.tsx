@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   FolderOpen,
   Loader2,
+  Package,
   Play,
   ScrollText,
   SlidersHorizontal,
@@ -22,6 +23,17 @@ const loaderTint: Record<Instance["loader"], string> = {
 };
 
 export function InstanceIcon({ inst, size = 44 }: { inst: Instance; size?: number }) {
+  const icon = inst.modpack?.iconUrl;
+  if (icon) {
+    return (
+      <img
+        src={icon}
+        alt=""
+        className="shrink-0 rounded-lg bg-raised object-cover"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
   const text =
     inst.loader === "vanilla"
       ? inst.version.length > 6
@@ -115,7 +127,7 @@ function IconAction({
 }
 
 export function InstanceCard({ inst }: { inst: Instance }) {
-  const { status, openLogs, openInstanceSettings, refresh, setError } = useLauncher();
+  const { status, openLogs, openInstanceSettings, openContent, refresh, setError } = useLauncher();
   const s = statusOf(status, inst.id);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -161,6 +173,9 @@ export function InstanceCard({ inst }: { inst: Instance }) {
       <div className="mt-4 flex items-center justify-between">
         <PlayButton inst={inst} />
         <div className="flex gap-0.5 opacity-60 transition group-hover:opacity-100">
+          <IconAction label="Content" onClick={() => openContent(inst.id)}>
+            <Package size={15} />
+          </IconAction>
           <IconAction label="Logs" onClick={() => openLogs(inst.id)}>
             <ScrollText size={15} />
           </IconAction>

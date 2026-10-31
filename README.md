@@ -41,7 +41,19 @@ Dev builds can add **offline accounts** (Accounts → "Offline name") so you can
 NOVEX_MSA_CLIENT_ID=<your-client-id> npm run tauri dev
 ```
 
-For release builds, add `NOVEX_MSA_CLIENT_ID` as a GitHub Actions secret and expose it as an env var in `release.yml`.
+For release builds, add `NOVEX_MSA_CLIENT_ID` as a GitHub Actions secret. `release.yml` passes it to the build.
+
+## Mods and modpacks
+
+Browse searches Modrinth (no setup needed) and CurseForge. Mods, resource packs and shaders install into an instance, filtered to its Minecraft version and loader, with required dependencies. Modpacks install as new instances. Instances → Import takes a `.mrpack` or a CurseForge modpack `.zip`.
+
+CurseForge needs an API key from the [CurseForge console](https://console.curseforge.com/). Set it like the Microsoft client ID:
+
+```bash
+NOVEX_CURSEFORGE_API_KEY=<your-key> npm run tauri dev
+```
+
+For releases, add it as the `NOVEX_CURSEFORGE_API_KEY` GitHub Actions secret. Without a key the CurseForge tab says so and Modrinth still works. Some CurseForge authors block downloads from launchers; those files are listed after a modpack installs so they can be downloaded by hand.
 
 ## Launch smoke test
 
@@ -59,6 +71,12 @@ cargo run --example launch -- 1.20.1 /tmp/novex-smoke 90 forge
 ```
 
 Set `NOVEX_JVM_ARGS` to try extra JVM flags, or `NOVEX_JAVA` to use a specific Java binary.
+
+The `content` example drives search, installs and modpacks from the command line (see the top of `examples/content.rs`). Launch what it created with:
+
+```bash
+cargo run --example launch -- instance:<id> /tmp/novex-smoke 90
+```
 
 ## Loader support
 

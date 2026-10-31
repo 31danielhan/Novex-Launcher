@@ -1,6 +1,7 @@
 //! Headless smoke test of the launch pipeline with an offline account.
 //!
 //!   cargo run --example launch -- <version|latest> <data-dir> [seconds] [loader] [loader-version]
+//!   cargo run --example launch -- instance:<id> <data-dir> [seconds]
 //!
 //! Downloads everything into <data-dir>, starts the game, prints its log and stops it
 //! after [seconds] (default 60). `loader` is vanilla|fabric|quilt|forge|neoforge; the loader
@@ -11,7 +12,7 @@ use std::time::Duration;
 
 use novex_launcher_lib::{
     auth::Credentials,
-    downloads, game,
+    downloads, game, instances,
     loaders::{self, LoaderKind},
     platform::Paths,
     settings::Settings,
@@ -26,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let version = args.next().unwrap_or_else(|| "latest".into());
     let root = std::path::PathBuf::from(args.next().ok_or(USAGE)?);
     let secs: u64 = args.next().and_then(|s| s.parse().ok()).unwrap_or(60);
-    let loader: LoaderKind = match args.next() {
+    let mut loader: LoaderKind = match args.next() {
         Some(l) => serde_json::from_value(serde_json::Value::String(l)).map_err(|_| USAGE)?,
         None => LoaderKind::Vanilla,
     };
@@ -34,6 +35,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let http = downloads::http_client();
     let paths = Paths { root: root.clone() };
+    // An existing instance (e.g. an installed modpack) launches from its own folder.
+    let existing = match version.strip_prefix("instance:") {
+        Some(id) => Some(instances::load(&paths, id)?),
+        None => None,
+    };
+    let version = match &existing {
+        Some(inst) => {
+            loader = inst.loader;
+            loader_version = inst.loader_version.clone();
+            inst.version.clone()
+        }
+        None => version,
+    };
     let version = if version == "latest" {
         let m: serde_json::Value = downloads::get_json(
             &http,
@@ -68,7 +82,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         access_token: "0".into(),
         user_type: "legacy",
     };
-    let instance = format!("instances/smoke-{}", loader.label().to_lowercase());
+    let instance = match &existing {
+        Some(inst) => format!("instances/{}", inst.id),
+        None => format!("instances/smoke-{}", loader.label().to_lowercase()),
+    };
     let game_dir = root.join(&instance).join("minecraft");
     let natives = root.join(&instance).join("natives");
     let target = game::LaunchTarget {

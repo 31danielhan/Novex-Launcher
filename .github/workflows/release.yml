@@ -66,6 +66,9 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Baked into the app at build time. Empty secrets just disable the feature.
+          NOVEX_MSA_CLIENT_ID: ${{ secrets.NOVEX_MSA_CLIENT_ID }}
+          NOVEX_CURSEFORGE_API_KEY: ${{ secrets.NOVEX_CURSEFORGE_API_KEY }}
           # Code signing is wired up in M5. Uncomment once the secrets exist.
           # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}

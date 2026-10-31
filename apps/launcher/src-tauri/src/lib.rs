@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod content;
 pub mod downloads;
 pub mod error;
 pub mod game;
@@ -28,6 +29,7 @@ pub struct AppState {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let paths = platform::Paths::resolve(app.handle())?;
             std::fs::create_dir_all(&paths.root)?;
@@ -64,6 +66,15 @@ pub fn run() {
             instances::instance_folder,
             settings::settings_get,
             settings::settings_set,
+            content::content_sources,
+            content::content_search,
+            content::content_versions,
+            content::content_install,
+            content::content_list,
+            content::content_set_enabled,
+            content::content_remove,
+            content::modpack_install,
+            content::modpack_import,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Novex Launcher");

@@ -40,6 +40,15 @@ export interface Instance {
   memoryMb?: number | null;
   javaPath?: string | null;
   jvmArgs?: string | null;
+  modpack?: ModpackRef | null;
+}
+
+export interface ModpackRef {
+  source: Source | null;
+  projectId: string | null;
+  versionId: string | null;
+  version: string;
+  iconUrl: string | null;
 }
 
 export interface InstancePatch {
@@ -69,6 +78,62 @@ export interface DeviceCode {
   verificationUri: string;
   expiresIn: number;
   interval: number;
+}
+
+export type Source = "modrinth" | "curseforge";
+export type ContentKind = "modpack" | "mod" | "resourcepack" | "shader";
+
+export interface SearchQuery {
+  source: Source;
+  kind: ContentKind;
+  query: string;
+  gameVersion: string | null;
+  loader: LoaderKind | null;
+  offset: number;
+}
+
+export interface SearchHit {
+  source: Source;
+  id: string;
+  title: string;
+  description: string;
+  author: string;
+  iconUrl: string | null;
+  downloads: number;
+  categories: string[];
+  url: string;
+}
+
+export interface SearchPage {
+  hits: SearchHit[];
+  total: number;
+}
+
+export interface ContentVersion {
+  id: string;
+  name: string;
+  versionNumber: string;
+  gameVersions: string[];
+  loaders: string[];
+  published: string;
+  channel: "release" | "beta" | "alpha";
+  file: { url: string | null; filename: string; sha1: string | null; size: number | null };
+}
+
+export interface InstalledItem {
+  kind: ContentKind;
+  file: string;
+  enabled: boolean;
+  title: string;
+  version: string | null;
+  iconUrl: string | null;
+  source: Source | null;
+  projectId: string | null;
+}
+
+export interface ModpackInstalled {
+  instance: Instance;
+  skipped: string[];
 }
 
 export interface Settings {
@@ -115,12 +180,36 @@ export const api = {
   kill: (id: string) => call<void>("kill_instance", { id }),
   running: () => call<string[]>("running_instances"),
 
+  contentSources: () => call<{ curseforge: boolean }>("content_sources"),
+  search: (query: SearchQuery) => call<SearchPage>("content_search", { query }),
+  contentVersions: (source: Source, projectId: string, kind: ContentKind, instanceId: string | null) =>
+    call<ContentVersion[]>("content_versions", { source, projectId, kind, instanceId }),
+  installContent: (
+    instanceId: string,
+    source: Source,
+    projectId: string,
+    kind: ContentKind,
+    versionId: string | null,
+  ) => call<string[]>("content_install", { instanceId, source, projectId, kind, versionId }),
+  installedContent: (instanceId: string) => call<InstalledItem[]>("content_list", { instanceId }),
+  setContentEnabled: (instanceId: string, kind: ContentKind, file: string, enabled: boolean) =>
+    call<void>("content_set_enabled", { instanceId, kind, file, enabled }),
+  removeContent: (instanceId: string, kind: ContentKind, file: string) =>
+    call<void>("content_remove", { instanceId, kind, file }),
+  installModpack: (source: Source, projectId: string, versionId: string | null, title: string) =>
+    call<ModpackInstalled>("modpack_install", { source, projectId, versionId, title }),
+  importModpack: (path: string) => call<ModpackInstalled>("modpack_import", { path }),
+
   settings: () => call<Settings>("settings_get"),
   saveSettings: (settings: Settings) => call<Settings>("settings_set", { settings }),
 };
 
 export function errorText(e: unknown): string {
   return typeof e === "string" ? e : e instanceof Error ? e.message : String(e);
+}
+
+export function compactNumber(n: number): string {
+  return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(n);
 }
 
 export function timeAgo(secs?: number | null): string {

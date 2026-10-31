@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
+use crate::content::Source;
 use crate::error::{msg, Result};
 use crate::loaders::LoaderKind;
 use crate::platform::{now_secs, Paths};
@@ -34,6 +35,20 @@ pub struct Instance {
     pub java_path: Option<String>,
     #[serde(default)]
     pub jvm_args: Option<String>,
+    /// Set when the instance was installed from a modpack.
+    #[serde(default)]
+    pub modpack: Option<ModpackRef>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModpackRef {
+    /// `None` for packs imported from a file.
+    pub source: Option<Source>,
+    pub project_id: Option<String>,
+    pub version_id: Option<String>,
+    pub version: String,
+    pub icon_url: Option<String>,
 }
 
 impl Instance {
@@ -156,13 +171,14 @@ pub fn instances_list(state: State<'_, AppState>) -> Result<Vec<Instance>> {
     Ok(list)
 }
 
-#[tauri::command]
-pub fn instance_create(
-    state: State<'_, AppState>,
-    name: String,
+/// Creates the instance folder and its `instance.json`.
+pub fn create(
+    paths: &Paths,
+    name: &str,
     version: String,
     loader: LoaderKind,
     loader_version: Option<String>,
+    modpack: Option<ModpackRef>,
 ) -> Result<Instance> {
     let name = name.trim().to_string();
     if name.is_empty() {
@@ -176,7 +192,7 @@ pub fn instance_create(
         return Err(msg(format!("Pick a {} version.", loader.label())));
     }
     let inst = Instance {
-        id: unique_id(&state.paths, &name),
+        id: unique_id(paths, &name),
         name,
         version,
         loader,
@@ -187,13 +203,25 @@ pub fn instance_create(
         memory_mb: None,
         java_path: None,
         jvm_args: None,
+        modpack,
     };
-    save(&state.paths, &inst)?;
-    std::fs::create_dir_all(game_dir(&state.paths, &inst.id))?;
+    save(paths, &inst)?;
+    std::fs::create_dir_all(game_dir(paths, &inst.id))?;
     if loader != LoaderKind::Vanilla {
-        std::fs::create_dir_all(game_dir(&state.paths, &inst.id).join("mods"))?;
+        std::fs::create_dir_all(game_dir(paths, &inst.id).join("mods"))?;
     }
     Ok(inst)
+}
+
+#[tauri::command]
+pub fn instance_create(
+    state: State<'_, AppState>,
+    name: String,
+    version: String,
+    loader: LoaderKind,
+    loader_version: Option<String>,
+) -> Result<Instance> {
+    create(&state.paths, &name, version, loader, loader_version, None)
 }
 
 #[tauri::command]

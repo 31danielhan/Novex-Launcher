@@ -83,6 +83,33 @@ pub async fn versions(http: &Client, kind: LoaderKind, game: &str) -> Result<Vec
     Ok(list)
 }
 
+/// Maps a loader version as modpacks write it ("47.3.0", "0.16.5") to the id `install`
+/// expects (Forge ids are full Maven versions like "1.20.1-47.3.0").
+pub async fn find_version(
+    http: &Client,
+    kind: LoaderKind,
+    game: &str,
+    wanted: &str,
+) -> Result<String> {
+    if matches!(
+        kind,
+        LoaderKind::Fabric | LoaderKind::Quilt | LoaderKind::Vanilla
+    ) {
+        return Ok(wanted.to_string());
+    }
+    versions(http, kind, game)
+        .await?
+        .into_iter()
+        .find(|v| v.id == wanted || v.label == wanted)
+        .map(|v| v.id)
+        .ok_or_else(|| {
+            msg(format!(
+                "{} {wanted} isn't available for Minecraft {game}.",
+                kind.label()
+            ))
+        })
+}
+
 /// Resolves the full launch version: vanilla alone, or vanilla merged with the loader profile
 /// (installing the loader first if needed). `java` runs Forge's installer steps.
 pub async fn resolve<P>(
