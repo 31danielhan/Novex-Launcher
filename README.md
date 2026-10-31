@@ -45,12 +45,31 @@ For release builds, add `NOVEX_MSA_CLIENT_ID` as a GitHub Actions secret and exp
 
 ## Launch smoke test
 
-Downloads a version into a scratch folder, launches it with an offline account, and checks that it reaches the title screen:
+Downloads a version into a scratch folder, launches it with an offline account, and checks that it reaches the title screen and is still running after the given number of seconds:
 
 ```bash
 cd apps/launcher/src-tauri
 cargo run --example launch -- latest /tmp/novex-smoke 90
 ```
+
+Add a loader (`fabric`, `quilt`, `forge`, `neoforge`) and optionally a loader version. Without a version it uses the recommended or newest stable build:
+
+```bash
+cargo run --example launch -- 1.20.1 /tmp/novex-smoke 90 forge
+```
+
+Set `NOVEX_JVM_ARGS` to try extra JVM flags.
+
+## Loader support
+
+| Loader | Versions | Status on macOS (Apple Silicon) |
+|---|---|---|
+| Fabric | 1.14+, and 1.3–1.13.2 through Legacy Fabric | Tested on 26.3 and 1.8.9 |
+| Quilt | Whatever Quilt publishes | Tested on 1.21.1. Quilt has no build that runs on 26.3 yet |
+| Forge | 1.13+ via the installer's processors; 1.12.2 and older via `versionInfo` | Tested on 26.3 and 1.20.1 |
+| NeoForge | 1.20.2+ | Tested on 26.3 |
+
+**Known issue:** Forge 1.8.9 (and probably other Forge versions up to 1.12.2) installs fine but crashes on Apple Silicon Macs with `glCheckFramebufferStatus returned unknown status:0`. It runs under Rosetta with Intel Java 8. Turning off Forge's splash screen and `-Dforge.forceNoStencil=true` didn't help. Legacy Fabric 1.8.9 works on the same machine, so the next step is to try its patched LWJGL build for old Forge. This hasn't been tested on Intel Macs, Windows or Linux.
 
 ## Build installers
 

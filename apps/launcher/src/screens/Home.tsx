@@ -1,6 +1,6 @@
 import { Boxes, Play, Plus } from "lucide-react";
 import { useLauncher, statusOf } from "../launcher";
-import { timeAgo } from "../lib/api";
+import { describe, timeAgo } from "../lib/api";
 import { Badge, Button, Card, EmptyState } from "../components/ui";
 import { InstanceCard, PlayButton, ProgressBar } from "../components/InstanceCard";
 
@@ -19,7 +19,7 @@ export function HomeScreen() {
           <>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight">{last.name}</h1>
             <p className="mt-1 text-[13px] text-muted">
-              Vanilla {last.version} · {timeAgo(last.lastPlayed)}
+              {describe(last)} · {timeAgo(last.lastPlayed)}
             </p>
             <div className="mt-6 flex max-w-sm flex-col">
               <div className="flex gap-2">

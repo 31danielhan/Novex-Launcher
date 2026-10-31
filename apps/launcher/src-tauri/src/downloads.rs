@@ -83,9 +83,12 @@ pub async fn fetch_all<F>(client: &Client, items: Vec<Download>, on_progress: F)
 where
     F: Fn(usize, usize) + Send + Sync,
 {
+    // The same file can be listed twice (e.g. by a loader and by vanilla); fetching it
+    // twice in parallel would race on the temp file.
+    let mut seen = std::collections::HashSet::new();
     let mut missing = Vec::new();
     for d in items {
-        if !is_present(&d).await {
+        if seen.insert(d.path.clone()) && !is_present(&d).await {
             missing.push(d);
         }
     }
@@ -115,14 +118,33 @@ where
     Ok(())
 }
 
+/// GETs `url` as text, retrying connection failures and server errors (not 4xx).
+pub async fn get_text(client: &Client, url: &str) -> Result<String> {
+    let mut attempt = 0;
+    loop {
+        let result = async {
+            client
+                .get(url)
+                .send()
+                .await?
+                .error_for_status()?
+                .text()
+                .await
+        }
+        .await;
+        match result {
+            Ok(text) => return Ok(text),
+            Err(e) if attempt + 1 < RETRIES && !e.status().is_some_and(|s| s.is_client_error()) => {
+                attempt += 1;
+                tokio::time::sleep(std::time::Duration::from_millis(500 * attempt as u64)).await;
+            }
+            Err(e) => return Err(e.into()),
+        }
+    }
+}
+
 pub async fn get_json<T: DeserializeOwned>(client: &Client, url: &str) -> Result<T> {
-    Ok(client
-        .get(url)
-        .send()
-        .await?
-        .error_for_status()?
-        .json()
-        .await?)
+    Ok(serde_json::from_str(&get_text(client, url).await?)?)
 }
 
 /// Fetches a JSON file into `path` (verified by sha1 when given) and parses it.

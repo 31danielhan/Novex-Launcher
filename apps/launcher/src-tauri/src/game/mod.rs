@@ -20,6 +20,7 @@ use crate::downloads::{self, Download};
 use crate::error::{msg, Result};
 use crate::instances;
 use crate::java;
+use crate::loaders::{self, LoaderKind};
 use crate::platform::{classpath_separator, now_secs, Paths};
 use crate::settings::Settings;
 use crate::AppState;
@@ -30,24 +31,31 @@ pub struct LaunchPlan {
     pub args: Vec<String>,
 }
 
+/// What to launch and where.
+pub struct LaunchTarget<'a> {
+    pub version: &'a str,
+    pub loader: LoaderKind,
+    pub loader_version: Option<&'a str>,
+    pub game_dir: &'a Path,
+    pub natives_dir: &'a Path,
+}
+
 /// Everything needed to start the game without touching Tauri, so it can be driven
 /// from tests and tools too. `progress(stage, done, total)` reports each step.
-#[allow(clippy::too_many_arguments)]
 pub async fn prepare<P>(
     http: &Client,
     paths: &Paths,
     settings: &Settings,
-    version_id: &str,
-    game_dir: &Path,
-    natives_dir: &Path,
+    target: &LaunchTarget<'_>,
     creds: &Credentials,
     progress: P,
 ) -> Result<LaunchPlan>
 where
     P: Fn(&str, usize, usize) + Send + Sync,
 {
+    let (game_dir, natives_dir) = (target.game_dir, target.natives_dir);
     progress("Preparing version", 0, 0);
-    let v = version::version_json(http, paths, version_id).await?;
+    let vanilla = version::version_json(http, paths, target.version).await?;
 
     let java = match &settings.java_path {
         Some(p) => {
@@ -59,19 +67,35 @@ where
         }
         None => {
             let force_x64 = cfg!(all(target_os = "macos", target_arch = "aarch64"))
-                && !v.has_arm64_mac_natives();
-            java::ensure_runtime(http, paths, v.java_component(), force_x64, |d, t| {
+                && !vanilla.has_arm64_mac_natives();
+            java::ensure_runtime(http, paths, vanilla.java_component(), force_x64, |d, t| {
                 progress("Downloading Java", d, t)
             })
             .await?
         }
     };
 
+    // The vanilla jar comes first: Forge's installer patches it.
+    let (vanilla_jar, _) = files::client_jar(paths, &vanilla);
+    downloads::fetch_all(http, vec![vanilla_jar.clone()], |d, t| {
+        progress("Downloading Minecraft", d, t)
+    })
+    .await?;
+    let v = loaders::resolve(
+        http,
+        paths,
+        vanilla,
+        target.loader,
+        target.loader_version,
+        &java,
+        &progress,
+    )
+    .await?;
+
     tokio::fs::create_dir_all(game_dir).await?;
     let libs = files::libraries(paths, &v);
-    let client_jar = files::client_jar(paths, &v);
+    let (_, client_jar_path) = files::client_jar(paths, &v);
     let mut dls = libs.downloads.clone();
-    dls.push(client_jar.clone());
     let log_config = v.logging.as_ref().and_then(|l| l.client.as_ref()).map(|c| {
         let path = paths.assets().join("log_configs").join(&c.file.id);
         dls.push(Download {
@@ -83,6 +107,7 @@ where
         c.argument.replace("${path}", &path.to_string_lossy())
     });
     downloads::fetch_all(http, dls, |d, t| progress("Downloading libraries", d, t)).await?;
+    files::link_client_jar(&vanilla_jar.path, &client_jar_path)?;
 
     let game_assets = files::assets(http, paths, &v, game_dir, |d, t| {
         progress("Downloading assets", d, t)
@@ -96,7 +121,7 @@ where
         .map_err(|e| msg(e.to_string()))??;
 
     let mut classpath: Vec<String> = Vec::new();
-    for p in libs.classpath.iter().chain([&client_jar.path]) {
+    for p in libs.classpath.iter().chain([&client_jar_path]) {
         let s = p.to_string_lossy().into_owned();
         if !classpath.contains(&s) {
             classpath.push(s);
@@ -284,21 +309,18 @@ async fn start(app: &AppHandle, state: &AppState, id: &str) -> Result<()> {
     let mut inst = instances::load(&state.paths, id)?;
     emit("Signing in", 0, 0);
     let creds = auth::credentials(state).await?;
-    let settings = state.settings.lock().await.clone();
+    let settings = inst.effective_settings(&state.settings.lock().await.clone());
     let game_dir = instances::game_dir(&state.paths, id);
     let natives_dir = instances::dir(&state.paths, id).join("natives");
 
-    let plan = prepare(
-        &state.http,
-        &state.paths,
-        &settings,
-        &inst.version,
-        &game_dir,
-        &natives_dir,
-        &creds,
-        emit,
-    )
-    .await?;
+    let target = LaunchTarget {
+        version: &inst.version,
+        loader: inst.loader,
+        loader_version: inst.loader_version.as_deref(),
+        game_dir: &game_dir,
+        natives_dir: &natives_dir,
+    };
+    let plan = prepare(&state.http, &state.paths, &settings, &target, &creds, emit).await?;
 
     emit("Starting", 0, 0);
     let mut child = command(&plan, &game_dir).spawn().map_err(|e| {

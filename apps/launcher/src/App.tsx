@@ -4,6 +4,7 @@ import { Sidebar } from "./components/Sidebar";
 import { AccountsDialog } from "./components/AccountsDialog";
 import { NewInstanceDialog } from "./components/NewInstanceDialog";
 import { LogsDialog } from "./components/LogsDialog";
+import { InstanceSettingsDialog } from "./components/InstanceSettingsDialog";
 import { progressLabel } from "./components/InstanceCard";
 import { useApp, type Screen } from "./store";
 import { initLauncher, useLauncher } from "./launcher";
@@ -70,6 +71,7 @@ export default function App() {
       <AccountsDialog />
       <NewInstanceDialog />
       <LogsDialog />
+      <InstanceSettingsDialog />
     </div>
   );
 }

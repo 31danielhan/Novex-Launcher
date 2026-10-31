@@ -11,13 +11,50 @@ export interface AccountsView {
   accounts: Account[];
 }
 
+export type LoaderKind = "vanilla" | "fabric" | "quilt" | "forge" | "neoforge";
+
+export const loaderLabels: Record<LoaderKind, string> = {
+  vanilla: "Vanilla",
+  fabric: "Fabric",
+  quilt: "Quilt",
+  forge: "Forge",
+  neoforge: "NeoForge",
+};
+
+export interface LoaderVersion {
+  id: string;
+  label: string;
+  stable: boolean;
+  recommended: boolean;
+}
+
 export interface Instance {
   id: string;
   name: string;
   version: string;
+  loader: LoaderKind;
+  loaderVersion?: string | null;
   created: number;
   lastPlayed?: number | null;
   playTimeSecs: number;
+  memoryMb?: number | null;
+  javaPath?: string | null;
+  jvmArgs?: string | null;
+}
+
+export interface InstancePatch {
+  name: string;
+  loaderVersion: string | null;
+  memoryMb: number | null;
+  javaPath: string | null;
+  jvmArgs: string | null;
+}
+
+/** "Fabric 0.20.1 · 26.3" or "Vanilla 26.3". */
+export function describe(i: Instance): string {
+  if (i.loader === "vanilla") return `Vanilla ${i.version}`;
+  const lv = i.loaderVersion?.replace(`${i.version}-`, "") ?? "";
+  return `${loaderLabels[i.loader]} ${lv} · ${i.version}`;
 }
 
 export interface VersionEntry {
@@ -63,8 +100,13 @@ export const api = {
 
   versions: () => call<VersionEntry[]>("versions_list"),
   instances: () => call<Instance[]>("instances_list"),
-  createInstance: (name: string, version: string) =>
-    call<Instance>("instance_create", { name, version }),
+  createInstance: (name: string, version: string, loader: LoaderKind, loaderVersion: string | null) =>
+    call<Instance>("instance_create", { name, version, loader, loaderVersion }),
+  updateInstance: (id: string, patch: InstancePatch) =>
+    call<Instance>("instance_update", { id, patch }),
+  cloneInstance: (id: string) => call<Instance>("instance_clone", { id }),
+  loaderVersions: (kind: LoaderKind, game: string) =>
+    call<LoaderVersion[]>("loader_versions", { kind, game }),
   deleteInstance: (id: string) => call<void>("instance_delete", { id }),
   instanceFolder: (id: string) => call<string>("instance_folder", { id }),
   openPath: (path: string) => call<void>("open_path", { path }),

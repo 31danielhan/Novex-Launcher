@@ -4,6 +4,7 @@ pub mod error;
 pub mod game;
 pub mod instances;
 pub mod java;
+pub mod loaders;
 pub mod platform;
 pub mod settings;
 
@@ -56,7 +57,10 @@ pub fn run() {
             game::running_instances,
             instances::instances_list,
             instances::instance_create,
+            instances::instance_update,
+            instances::instance_clone,
             instances::instance_delete,
+            loaders::loader_versions,
             instances::instance_folder,
             settings::settings_get,
             settings::settings_set,

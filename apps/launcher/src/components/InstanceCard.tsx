@@ -1,6 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { FolderOpen, Loader2, Play, ScrollText, Square, Trash2 } from "lucide-react";
-import { api, errorText, timeAgo, type Instance } from "../lib/api";
+import {
+  FolderOpen,
+  Loader2,
+  Play,
+  ScrollText,
+  SlidersHorizontal,
+  Square,
+  Trash2,
+} from "lucide-react";
+import { api, describe, errorText, loaderLabels, timeAgo, type Instance } from "../lib/api";
 import { statusOf, useLauncher, type Status } from "../launcher";
 import { Button, Card, cx } from "./ui";
 
@@ -78,7 +86,7 @@ function IconAction({
 }
 
 export function InstanceCard({ inst }: { inst: Instance }) {
-  const { status, openLogs, refresh, setError } = useLauncher();
+  const { status, openLogs, openInstanceSettings, refresh, setError } = useLauncher();
   const s = statusOf(status, inst.id);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -110,12 +118,16 @@ export function InstanceCard({ inst }: { inst: Instance }) {
     <Card className="group p-4">
       <div className="flex items-start gap-3">
         <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-accent/30 to-accent/5 text-[11px] font-semibold text-accent">
-          {inst.version.length > 6 ? "MC" : inst.version}
+          {inst.loader === "vanilla"
+            ? inst.version.length > 6
+              ? "MC"
+              : inst.version
+            : loaderLabels[inst.loader].slice(0, 2)}
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{inst.name}</p>
           <p className="truncate text-[12px] text-muted">
-            Vanilla {inst.version} ·{" "}
+            {describe(inst)} ·{" "}
             {s.state === "running" ? <span className="text-success">Running</span> : timeAgo(inst.lastPlayed)}
           </p>
         </div>
@@ -131,6 +143,9 @@ export function InstanceCard({ inst }: { inst: Instance }) {
           </IconAction>
           <IconAction label="Open folder" onClick={openFolder}>
             <FolderOpen size={15} />
+          </IconAction>
+          <IconAction label="Instance settings" onClick={() => openInstanceSettings(inst.id)}>
+            <SlidersHorizontal size={15} />
           </IconAction>
           <IconAction label={confirmDelete ? "Click again to delete" : "Delete"} onClick={remove} danger>
             {confirmDelete ? <span className="text-[11px] font-semibold">Sure?</span> : <Trash2 size={15} />}

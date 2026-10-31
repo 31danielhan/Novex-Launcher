@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Search } from "lucide-react";
-import { api, errorText, type VersionEntry } from "../lib/api";
+import { api, errorText, loaderLabels, type LoaderKind, type VersionEntry } from "../lib/api";
 import { useLauncher } from "../launcher";
 import { Dialog, Field, inputClass } from "./Dialog";
-import { Button, Toggle, cx } from "./ui";
+import { LoaderVersionSelect } from "./LoaderVersionSelect";
+import { Button, Segmented, Toggle, cx } from "./ui";
+
+const loaderOptions = (Object.keys(loaderLabels) as LoaderKind[]).map((k) => ({
+  value: k,
+  label: loaderLabels[k],
+}));
 
 export function NewInstanceDialog() {
   const { newInstanceOpen, openNewInstance, refresh } = useLauncher();
@@ -12,6 +18,8 @@ export function NewInstanceDialog() {
   const [query, setQuery] = useState("");
   const [snapshots, setSnapshots] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  const [loader, setLoader] = useState<LoaderKind>("vanilla");
+  const [loaderVersion, setLoaderVersion] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -42,7 +50,14 @@ export function NewInstanceDialog() {
     setBusy(true);
     setError(null);
     try {
-      await api.createInstance(name.trim() || `Minecraft ${selected}`, selected);
+      const fallback =
+        loader === "vanilla" ? `Minecraft ${selected}` : `${loaderLabels[loader]} ${selected}`;
+      await api.createInstance(
+        name.trim() || fallback,
+        selected,
+        loader,
+        loader === "vanilla" ? null : loaderVersion,
+      );
       await refresh();
       openNewInstance(false);
     } catch (e) {
@@ -62,7 +77,11 @@ export function NewInstanceDialog() {
           <Button variant="ghost" onClick={() => openNewInstance(false)}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={create} disabled={!selected || busy}>
+          <Button
+            variant="primary"
+            onClick={create}
+            disabled={!selected || busy || (loader !== "vanilla" && !loaderVersion)}
+          >
             {busy ? "Creating…" : "Create"}
           </Button>
         </>
@@ -120,7 +139,18 @@ export function NewInstanceDialog() {
           </div>
         </div>
 
-        <p className="text-[12px] text-muted">Mod loaders (Fabric, Forge, NeoForge, Quilt) are coming next.</p>
+        <div className="space-y-2">
+          <span className="block text-[12px] font-medium text-muted">Mod loader</span>
+          <Segmented value={loader} onChange={setLoader} options={loaderOptions} />
+          {selected && (
+            <LoaderVersionSelect
+              kind={loader}
+              game={selected}
+              value={loaderVersion}
+              onChange={setLoaderVersion}
+            />
+          )}
+        </div>
         {error && <p className="text-[13px] text-danger">{error}</p>}
       </div>
     </Dialog>

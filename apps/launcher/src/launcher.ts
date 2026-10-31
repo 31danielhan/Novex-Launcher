@@ -20,6 +20,7 @@ interface LauncherState {
   accountsOpen: boolean;
   newInstanceOpen: boolean;
   logsFor: string | null;
+  settingsFor: string | null;
 
   refresh: () => Promise<void>;
   refreshAccounts: () => Promise<void>;
@@ -29,6 +30,7 @@ interface LauncherState {
   openAccounts: (open: boolean) => void;
   openNewInstance: (open: boolean) => void;
   openLogs: (id: string | null) => void;
+  openInstanceSettings: (id: string | null) => void;
 }
 
 export const useLauncher = create<LauncherState>((set, get) => ({
@@ -41,6 +43,7 @@ export const useLauncher = create<LauncherState>((set, get) => ({
   accountsOpen: false,
   newInstanceOpen: false,
   logsFor: null,
+  settingsFor: null,
 
   refresh: async () => {
     if (!inTauri) return;
@@ -91,6 +94,7 @@ export const useLauncher = create<LauncherState>((set, get) => ({
   openAccounts: (accountsOpen) => set({ accountsOpen }),
   openNewInstance: (newInstanceOpen) => set({ newInstanceOpen }),
   openLogs: (logsFor) => set({ logsFor }),
+  openInstanceSettings: (settingsFor) => set({ settingsFor }),
 }));
 
 export const statusOf = (s: Record<string, Status>, id: string): Status => s[id] ?? IDLE;

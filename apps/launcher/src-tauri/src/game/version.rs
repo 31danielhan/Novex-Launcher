@@ -45,12 +45,32 @@ pub struct VersionJson {
     pub libraries: Vec<Library>,
     pub java_version: Option<JavaVersion>,
     pub logging: Option<Logging>,
+    /// Set when this is a loader profile merged onto a vanilla version (the vanilla id).
+    #[serde(skip)]
+    pub base_id: Option<String>,
+}
+
+/// A mod loader's partial version JSON that `inheritsFrom` a vanilla version.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProfileJson {
+    pub id: String,
+    pub main_class: Option<String>,
+    pub arguments: Option<Arguments>,
+    pub minecraft_arguments: Option<String>,
+    #[serde(default)]
+    pub libraries: Vec<Library>,
+    pub java_version: Option<JavaVersion>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct FileRef {
+    /// Empty for files a loader installer generates locally.
+    #[serde(default)]
     pub sha1: String,
+    #[serde(default)]
     pub size: u64,
+    #[serde(default)]
     pub url: String,
     pub path: Option<String>,
 }
@@ -75,6 +95,76 @@ pub struct Library {
     pub rules: Vec<Rule>,
     /// Pre-1.19 style natives: OS name → classifier (may contain `${arch}`).
     pub natives: Option<HashMap<String, String>>,
+    /// Maven repository for loader libraries without `downloads` (Fabric, old Forge).
+    pub url: Option<String>,
+    pub sha1: Option<String>,
+    pub size: Option<u64>,
+    /// Old Forge profiles mark server-only libraries with `clientreq: false`.
+    pub clientreq: Option<bool>,
+}
+
+/// "group:artifact:version[:classifier][@ext]" → "group/path/artifact/version/artifact-version[-classifier].ext"
+pub fn maven_path(coord: &str) -> Option<String> {
+    let (coord, ext) = coord.split_once('@').unwrap_or((coord, "jar"));
+    let parts: Vec<&str> = coord.split(':').collect();
+    let (group, artifact, version) = (parts.first()?, parts.get(1)?, parts.get(2)?);
+    let classifier = parts.get(3).map(|c| format!("-{c}")).unwrap_or_default();
+    Some(format!(
+        "{}/{artifact}/{version}/{artifact}-{version}{classifier}.{ext}",
+        group.replace('.', "/")
+    ))
+}
+
+impl Library {
+    /// group:artifact[:classifier], used to let a loader replace a vanilla library.
+    fn key(&self) -> String {
+        let p: Vec<&str> = self.name.split(':').collect();
+        match p.as_slice() {
+            [g, a, _, c, ..] => format!("{g}:{a}:{c}"),
+            [g, a, ..] => format!("{g}:{a}"),
+            _ => self.name.clone(),
+        }
+    }
+}
+
+/// Applies a loader profile on top of its vanilla version.
+pub fn merge(base: VersionJson, profile: ProfileJson) -> VersionJson {
+    let mut libraries = Vec::new();
+    let mut taken = std::collections::HashSet::new();
+    for lib in &profile.libraries {
+        // An identical coordinate in vanilla has richer metadata (natives, hashes): keep vanilla's.
+        if base.libraries.iter().any(|b| b.name == lib.name) {
+            continue;
+        }
+        taken.insert(lib.key());
+        libraries.push(lib.clone());
+    }
+    libraries.extend(
+        base.libraries
+            .iter()
+            .filter(|b| !taken.contains(&b.key()))
+            .cloned(),
+    );
+
+    let arguments = match (base.arguments.clone(), profile.arguments) {
+        (Some(mut b), Some(p)) => {
+            b.game.extend(p.game);
+            b.jvm.extend(p.jvm);
+            Some(b)
+        }
+        (b, p) => p.or(b),
+    };
+
+    VersionJson {
+        base_id: Some(base.id.clone()),
+        id: profile.id,
+        main_class: profile.main_class.unwrap_or(base.main_class),
+        minecraft_arguments: profile.minecraft_arguments.or(base.minecraft_arguments),
+        java_version: profile.java_version.or(base.java_version),
+        arguments,
+        libraries,
+        ..base
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

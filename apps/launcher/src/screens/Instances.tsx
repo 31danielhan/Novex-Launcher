@@ -35,7 +35,7 @@ export function InstancesScreen() {
         <EmptyState
           icon={Boxes}
           title="No instances"
-          body="Create a vanilla instance to get started. Mod loaders arrive in the next update."
+          body="Create a vanilla or modded instance with Fabric, Quilt, Forge or NeoForge."
           action={create}
         />
       )}
