@@ -1,28 +1,44 @@
 import { Boxes, FolderInput, Plus } from "lucide-react";
+import { useLauncher } from "../launcher";
 import { Button, EmptyState, PageHeader } from "../components/ui";
+import { InstanceCard } from "../components/InstanceCard";
 
 export function InstancesScreen() {
+  const { instances, openNewInstance } = useLauncher();
+  const create = (
+    <Button variant="primary" icon={Plus} onClick={() => openNewInstance(true)}>
+      New instance
+    </Button>
+  );
+
   return (
     <>
       <PageHeader
         title="Instances"
-        subtitle="Each instance has its own version, loader, mods and settings."
+        subtitle="Each instance has its own version, worlds, mods and settings."
         actions={
           <>
             <Button variant="ghost" icon={FolderInput} disabled title="Coming soon">
               Import
             </Button>
-            <Button variant="primary" icon={Plus} disabled title="Coming soon">
-              New instance
-            </Button>
+            {create}
           </>
         }
       />
-      <EmptyState
-        icon={Boxes}
-        title="No instances"
-        body="Create a Vanilla, Fabric, Quilt, Forge or NeoForge instance, or import from another launcher."
-      />
+      {instances.length > 0 ? (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {instances.map((i) => (
+            <InstanceCard key={i.id} inst={i} />
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          icon={Boxes}
+          title="No instances"
+          body="Create a vanilla instance to get started. Mod loaders arrive in the next update."
+          action={create}
+        />
+      )}
     </>
   );
 }

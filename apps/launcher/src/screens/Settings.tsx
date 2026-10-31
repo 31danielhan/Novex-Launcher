@@ -1,7 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useApp, type ThemePref } from "../store";
-import { getSystemInfo, osLabel, type SystemInfo } from "../lib/system";
-import { Card, PageHeader, Segmented } from "../components/ui";
+import { useLauncher } from "../launcher";
+import { api, errorText, inTauri, type Settings } from "../lib/api";
+import { osLabel, useSystemInfo } from "../lib/system";
+import { inputClass } from "../components/Dialog";
+import { Button, Card, PageHeader, Segmented } from "../components/ui";
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
@@ -15,17 +18,94 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
   );
 }
 
-export function SettingsScreen() {
-  const { theme, setTheme } = useApp();
-  const [info, setInfo] = useState<SystemInfo | null>(null);
+function JavaSettings() {
+  const setError = useLauncher((s) => s.setError);
+  const [s, setS] = useState<Settings | null>(null);
 
   useEffect(() => {
-    getSystemInfo().then(setInfo).catch(() => setInfo(null));
-  }, []);
+    if (inTauri) api.settings().then(setS).catch((e) => setError(errorText(e)));
+  }, [setError]);
+
+  const save = async (next: Settings) => {
+    setS(next);
+    try {
+      setS(await api.saveSettings(next));
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
+
+  if (!s) {
+    return (
+      <Card className="mb-8">
+        <Row label="Java" hint="Available in the desktop app.">
+          —
+        </Row>
+      </Card>
+    );
+  }
+
+  const gb = (s.maxMemoryMb / 1024).toFixed(1).replace(/\.0$/, "");
+  return (
+    <Card className="mb-8">
+      <Row label="Memory" hint="Maximum RAM for the game. 4–6 GB suits most vanilla play.">
+        <div className="flex items-center gap-3">
+          <input
+            type="range"
+            min={1024}
+            max={16384}
+            step={512}
+            value={s.maxMemoryMb}
+            onChange={(e) => setS({ ...s, maxMemoryMb: Number(e.target.value) })}
+            onPointerUp={() => save(s)}
+            onKeyUp={() => save(s)}
+            className="w-40 accent-[rgb(var(--accent))]"
+            aria-label="Maximum memory"
+          />
+          <span className="w-12 text-right font-medium text-fg">{gb} GB</span>
+        </div>
+      </Row>
+      <Row label="Java executable" hint="Leave empty to use the Java that Novex downloads.">
+        <input
+          defaultValue={s.javaPath ?? ""}
+          onBlur={(e) => e.target.value !== (s.javaPath ?? "") && save({ ...s, javaPath: e.target.value })}
+          placeholder="Automatic"
+          className={`${inputClass} w-64`}
+          spellCheck={false}
+        />
+      </Row>
+      <Row label="JVM arguments" hint="Extra flags passed to Java.">
+        <input
+          defaultValue={s.jvmArgs}
+          onBlur={(e) => e.target.value !== s.jvmArgs && save({ ...s, jvmArgs: e.target.value })}
+          placeholder="-XX:+UseG1GC"
+          className={`${inputClass} w-64 font-mono`}
+          spellCheck={false}
+        />
+      </Row>
+    </Card>
+  );
+}
+
+export function SettingsScreen() {
+  const { theme, setTheme } = useApp();
+  const { accounts, activeAccount, openAccounts } = useLauncher();
+  const info = useSystemInfo();
+  const active = accounts.find((a) => a.uuid === activeAccount);
 
   return (
     <>
       <PageHeader title="Settings" />
+
+      <h2 className="mb-2 text-[13px] font-medium text-muted">Account</h2>
+      <Card className="mb-8">
+        <Row label={active ? active.name : "Not signed in"} hint={active ? "Playing as this account" : undefined}>
+          <Button onClick={() => openAccounts(true)}>{active ? "Manage" : "Sign in"}</Button>
+        </Row>
+      </Card>
+
+      <h2 className="mb-2 text-[13px] font-medium text-muted">Java</h2>
+      <JavaSettings />
 
       <h2 className="mb-2 text-[13px] font-medium text-muted">Appearance</h2>
       <Card className="mb-8">

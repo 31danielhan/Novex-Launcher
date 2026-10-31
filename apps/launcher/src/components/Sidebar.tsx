@@ -1,5 +1,7 @@
-import { Boxes, Compass, Home, Settings, Swords, type LucideIcon } from "lucide-react";
+import { Boxes, Compass, Home, Settings, Swords, UserRound, type LucideIcon } from "lucide-react";
 import { useApp, type Screen } from "../store";
+import { useLauncher } from "../launcher";
+import { Avatar } from "./AccountsDialog";
 import { cx } from "./ui";
 
 const items: { id: Screen; label: string; icon: LucideIcon }[] = [
@@ -41,7 +43,26 @@ export function Sidebar() {
         <NavButton key={i.id} {...i} />
       ))}
       <div className="flex-1" />
+      <AccountButton />
       <NavButton id="settings" label="Settings" icon={Settings} />
     </nav>
+  );
+}
+
+function AccountButton() {
+  const { accounts, activeAccount, openAccounts } = useLauncher();
+  const name = accounts.find((a) => a.uuid === activeAccount)?.name;
+  const label = name ?? "Sign in";
+  return (
+    <button
+      onClick={() => openAccounts(true)}
+      aria-label={label}
+      className="group relative mb-1 grid h-10 w-10 place-items-center rounded transition hover:bg-fg/5"
+    >
+      {name ? <Avatar name={name} size={28} /> : <UserRound size={19} className="text-muted" />}
+      <span className="pointer-events-none absolute left-12 z-10 whitespace-nowrap rounded bg-raised px-2 py-1 text-[12px] text-fg opacity-0 shadow-lg transition group-hover:opacity-100">
+        {label}
+      </span>
+    </button>
   );
 }
