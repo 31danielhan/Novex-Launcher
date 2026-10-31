@@ -11,11 +11,12 @@ export function BrowseScreen() {
 
   return (
     <>
-      <PageHeader title="Browse" subtitle="Find content on Modrinth and CurseForge." />
+      <PageHeader subtitle="Find content on Modrinth and CurseForge." />
 
-      <div className="hairline mb-4 flex h-10 items-center gap-2 rounded border bg-surface px-3 focus-within:border-accent/60">
+      <div className="hairline shadow-card mb-4 flex h-11 items-center gap-2 rounded-full border bg-surface px-4 focus-within:border-fg/20">
         <Search size={16} className="text-muted" />
         <input
+          autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={`Search ${kind.toLowerCase()}…`}
@@ -30,7 +31,7 @@ export function BrowseScreen() {
             onClick={() => setKind(k)}
             className={cx(
               "h-8 rounded-full px-3.5 text-[12px] font-medium transition",
-              k === kind ? "bg-accent text-accent-fg" : "bg-raised text-muted hover:text-fg",
+              k === kind ? "bg-accent text-accent-fg" : "hairline border bg-surface text-muted hover:text-fg",
             )}
           >
             {k}

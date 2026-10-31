@@ -10,7 +10,7 @@ import { Badge, Button, cx } from "./ui";
 export function Avatar({ name, size = 32 }: { name?: string; size?: number }) {
   return (
     <span
-      className="grid shrink-0 place-items-center rounded bg-accent/15 font-semibold uppercase text-accent"
+      className="grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-fg/15 to-fg/5 font-semibold uppercase text-fg"
       style={{ width: size, height: size, fontSize: size * 0.42 }}
     >
       {name?.[0] ?? "?"}

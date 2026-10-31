@@ -14,7 +14,6 @@ export function InstancesScreen() {
   return (
     <>
       <PageHeader
-        title="Instances"
         subtitle="Each instance has its own version, worlds, mods and settings."
         actions={
           <>

@@ -5,6 +5,7 @@ const token = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
 
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  darkMode: ["selector", '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
@@ -23,9 +24,10 @@ export default {
         sans: ['"Inter Variable"', "Inter", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
       },
       borderRadius: {
-        DEFAULT: "8px",
-        lg: "12px",
-        xl: "16px",
+        DEFAULT: "10px",
+        lg: "14px",
+        xl: "20px",
+        "2xl": "24px",
       },
       transitionDuration: {
         DEFAULT: "160ms",

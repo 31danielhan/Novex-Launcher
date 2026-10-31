@@ -4,7 +4,7 @@ import { useLauncher } from "../launcher";
 import { api, errorText, inTauri, type Settings } from "../lib/api";
 import { osLabel, useSystemInfo } from "../lib/system";
 import { inputClass } from "../components/Dialog";
-import { Button, Card, PageHeader, Segmented } from "../components/ui";
+import { Button, Card, Segmented } from "../components/ui";
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
@@ -95,19 +95,17 @@ export function SettingsScreen() {
 
   return (
     <>
-      <PageHeader title="Settings" />
-
-      <h2 className="mb-2 text-[13px] font-medium text-muted">Account</h2>
+      <h2 className="mb-2 px-1 text-[13px] font-semibold">Account</h2>
       <Card className="mb-8">
         <Row label={active ? active.name : "Not signed in"} hint={active ? "Playing as this account" : undefined}>
           <Button onClick={() => openAccounts(true)}>{active ? "Manage" : "Sign in"}</Button>
         </Row>
       </Card>
 
-      <h2 className="mb-2 text-[13px] font-medium text-muted">Java</h2>
+      <h2 className="mb-2 px-1 text-[13px] font-semibold">Java</h2>
       <JavaSettings />
 
-      <h2 className="mb-2 text-[13px] font-medium text-muted">Appearance</h2>
+      <h2 className="mb-2 px-1 text-[13px] font-semibold">Appearance</h2>
       <Card className="mb-8">
         <Row label="Theme">
           <Segmented<ThemePref>
@@ -122,7 +120,7 @@ export function SettingsScreen() {
         </Row>
       </Card>
 
-      <h2 className="mb-2 text-[13px] font-medium text-muted">About</h2>
+      <h2 className="mb-2 px-1 text-[13px] font-semibold">About</h2>
       <Card>
         <Row label="Version">{info?.appVersion ?? "—"}</Row>
         <Row label="Platform">

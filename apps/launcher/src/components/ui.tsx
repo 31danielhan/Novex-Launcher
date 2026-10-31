@@ -15,10 +15,10 @@ export function Button({
   return (
     <button
       className={cx(
-        "inline-flex h-9 items-center justify-center gap-2 rounded px-3.5 text-[13px] font-medium transition",
+        "inline-flex h-9 items-center justify-center gap-2 rounded-full px-4 text-[13px] font-medium transition",
         "disabled:cursor-not-allowed disabled:opacity-40",
-        variant === "primary" && "bg-accent text-accent-fg hover:brightness-110 active:brightness-95",
-        variant === "subtle" && "bg-raised text-fg hover:bg-fg/10",
+        variant === "primary" && "bg-accent text-accent-fg shadow-sm hover:opacity-90 active:opacity-100",
+        variant === "subtle" && "hairline border bg-surface text-fg hover:bg-raised",
         variant === "ghost" && "text-muted hover:bg-fg/5 hover:text-fg",
         className,
       )}
@@ -31,24 +31,16 @@ export function Button({
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cx("hairline rounded-lg border bg-surface", className)}>{children}</div>;
+  return (
+    <div className={cx("hairline shadow-card rounded-xl border bg-surface", className)}>{children}</div>
+  );
 }
 
-export function PageHeader({
-  title,
-  subtitle,
-  actions,
-}: {
-  title: string;
-  subtitle?: string;
-  actions?: ReactNode;
-}) {
+/** Intro line and actions under the top bar, which already shows the page title. */
+export function PageHeader({ subtitle, actions }: { subtitle?: string; actions?: ReactNode }) {
   return (
-    <header className="mb-6 flex items-end justify-between gap-4">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-        {subtitle && <p className="mt-1 text-[13px] text-muted">{subtitle}</p>}
-      </div>
+    <header className="mb-5 flex items-center justify-between gap-4">
+      <p className="text-[13px] text-muted">{subtitle}</p>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </header>
   );
@@ -66,8 +58,8 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="hairline flex flex-col items-center justify-center rounded-lg border border-dashed px-6 py-16 text-center">
-      <div className="mb-4 grid h-11 w-11 place-items-center rounded-lg bg-accent/10 text-accent">
+    <div className="hairline flex flex-col items-center justify-center rounded-xl border border-dashed px-6 py-14 text-center">
+      <div className="shadow-card mb-4 grid h-11 w-11 place-items-center rounded-full bg-surface text-fg">
         <Icon size={20} />
       </div>
       <h3 className="font-medium">{title}</h3>
@@ -97,7 +89,7 @@ export function Toggle({
       onClick={() => onChange(!checked)}
       className={cx(
         "relative h-6 w-10 shrink-0 rounded-full transition disabled:cursor-not-allowed disabled:opacity-40",
-        checked ? "bg-accent" : "bg-fg/15",
+        checked ? "bg-success" : "bg-fg/15",
       )}
     >
       <span
@@ -122,14 +114,14 @@ export function Segmented<T extends string>({
   disabled?: boolean;
 }) {
   return (
-    <div className="inline-flex rounded bg-raised p-1">
+    <div className="inline-flex rounded-full bg-raised p-1">
       {options.map((o) => (
         <button
           key={o.value}
           disabled={disabled}
           onClick={() => onChange(o.value)}
           className={cx(
-            "h-7 rounded-[6px] px-3 text-[12px] font-medium transition disabled:cursor-not-allowed",
+            "h-7 rounded-full px-3.5 text-[12px] font-medium transition disabled:cursor-not-allowed",
             value === o.value ? "bg-surface text-fg shadow-sm" : "text-muted hover:text-fg",
           )}
         >
@@ -140,9 +132,18 @@ export function Segmented<T extends string>({
   );
 }
 
-export function Badge({ children }: { children: ReactNode }) {
+type Tone = "neutral" | "success" | "danger";
+
+export function Badge({ tone = "neutral", children }: { tone?: Tone; children: ReactNode }) {
   return (
-    <span className="rounded-full bg-fg/[0.06] px-2 py-0.5 text-[11px] font-medium text-muted">
+    <span
+      className={cx(
+        "rounded-full border px-2 py-0.5 text-[11px] font-medium",
+        tone === "neutral" && "hairline text-muted",
+        tone === "success" && "border-success/30 bg-success/10 text-success",
+        tone === "danger" && "border-danger/30 bg-danger/10 text-danger",
+      )}
+    >
       {children}
     </span>
   );

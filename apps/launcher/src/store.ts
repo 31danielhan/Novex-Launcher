@@ -12,7 +12,7 @@ function readTheme(): ThemePref {
   } catch {
     // Storage can be unavailable; fall back to the default.
   }
-  return "dark";
+  return "light";
 }
 
 function applyTheme(pref: ThemePref) {

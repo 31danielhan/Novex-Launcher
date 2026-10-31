@@ -32,7 +32,7 @@ export function LogsDialog() {
         </Button>
       }
     >
-      <div className="h-[55vh] select-text overflow-auto rounded bg-bg p-3 font-mono text-[11.5px] leading-relaxed">
+      <div className="h-[55vh] select-text overflow-auto rounded-lg bg-raised p-3 font-mono text-[11.5px] leading-relaxed">
         {lines.length === 0 ? (
           <p className="text-muted">No output yet. Logs appear here while the game runs.</p>
         ) : (

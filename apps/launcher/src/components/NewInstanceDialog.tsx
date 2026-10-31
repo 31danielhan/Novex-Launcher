@@ -106,7 +106,7 @@ export function NewInstanceDialog() {
               <Toggle label="Show snapshots" checked={snapshots} onChange={setSnapshots} />
             </label>
           </div>
-          <div className="hairline mb-2 flex h-9 items-center gap-2 rounded border bg-bg px-3 focus-within:border-accent/60">
+          <div className="hairline mb-2 flex h-9 items-center gap-2 rounded-full border bg-raised px-4 focus-within:border-fg/20">
             <Search size={14} className="text-muted" />
             <input
               value={query}
@@ -115,7 +115,7 @@ export function NewInstanceDialog() {
               className="h-full flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted"
             />
           </div>
-          <div className="hairline h-56 overflow-y-auto rounded border p-1">
+          <div className="hairline h-56 overflow-y-auto rounded-lg border p-1">
             {!versions && !error && (
               <p className="flex h-full items-center justify-center gap-2 text-[13px] text-muted">
                 <Loader2 size={14} className="animate-spin" /> Loading versions…

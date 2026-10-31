@@ -2,36 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Design tokens: space-separated RGB so Tailwind can apply alpha (bg-accent/10). */
+/* Design tokens: space-separated RGB so Tailwind can apply alpha (bg-accent/10).
+   Soft gray canvas, white cards, near-black primary; dark mode mirrors it. */
 :root,
-:root[data-theme="dark"] {
-  --bg: 14 14 18;
-  --surface: 22 22 28;
-  --raised: 30 30 38;
-  --line: 255 255 255;
-  --fg: 236 236 241;
-  --muted: 142 142 156;
-  --accent: 139 108 255;
+:root[data-theme="light"] {
+  --bg: 240 240 242;
+  --surface: 255 255 255;
+  --raised: 245 245 247;
+  --line: 15 15 25;
+  --fg: 17 17 20;
+  --muted: 128 128 138;
+  --accent: 17 17 20;
   --accent-fg: 255 255 255;
-  --success: 52 211 153;
-  --danger: 248 113 113;
-  --line-alpha: 0.07;
-  color-scheme: dark;
+  --success: 34 170 90;
+  --danger: 226 72 72;
+  --line-alpha: 0.06;
+  --shadow: 0 1px 2px rgb(15 15 25 / 0.04), 0 4px 16px rgb(15 15 25 / 0.04);
+  color-scheme: light;
 }
 
-:root[data-theme="light"] {
-  --bg: 246 246 249;
-  --surface: 255 255 255;
-  --raised: 240 240 245;
-  --line: 15 15 25;
-  --fg: 20 20 28;
-  --muted: 108 108 122;
-  --accent: 110 78 240;
-  --accent-fg: 255 255 255;
-  --success: 16 160 110;
-  --danger: 220 60 60;
-  --line-alpha: 0.09;
-  color-scheme: light;
+:root[data-theme="dark"] {
+  --bg: 12 12 14;
+  --surface: 24 24 27;
+  --raised: 34 34 38;
+  --line: 255 255 255;
+  --fg: 240 240 243;
+  --muted: 145 145 155;
+  --accent: 245 245 247;
+  --accent-fg: 17 17 20;
+  --success: 74 210 130;
+  --danger: 248 113 113;
+  --line-alpha: 0.07;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  color-scheme: dark;
 }
 
 @layer base {
@@ -95,5 +98,8 @@
 @layer components {
   .hairline {
     border-color: rgb(var(--line) / var(--line-alpha));
+  }
+  .shadow-card {
+    box-shadow: var(--shadow);
   }
 }
