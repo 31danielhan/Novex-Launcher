@@ -28,7 +28,7 @@ npm run tauri dev
 
 `npm run dev` alone opens the UI in a browser without the Rust backend.
 
-Dev builds can add **offline accounts** (Accounts → "Offline name") so you can test launching without Microsoft sign-in. Release builds hide this option.
+**Offline accounts** (Accounts → "Offline account") work once a Microsoft account that owns Minecraft is signed in, as in other launchers. Dev builds allow them without one, for testing.
 
 ## Microsoft sign-in setup
 

@@ -1,4 +1,7 @@
-//! Accounts: Microsoft sign-in via device code, plus offline accounts in dev builds.
+//! Accounts: Microsoft sign-in via device code, plus offline accounts.
+//!
+//! Offline accounts need a Microsoft account that owns the game on this launcher first (dev
+//! builds excepted), the same rule other launchers follow.
 
 pub mod msa;
 pub mod store;
@@ -20,6 +23,17 @@ use store::{Account, AccountKind, StoredAccount};
 pub struct AccountsView {
     active: Option<String>,
     accounts: Vec<Account>,
+    /// Whether an offline account can be added right now.
+    offline_allowed: bool,
+}
+
+fn offline_allowed(store: &store::AccountStore) -> bool {
+    cfg!(debug_assertions)
+        || store
+            .data
+            .accounts
+            .iter()
+            .any(|a| a.account.kind == AccountKind::Microsoft)
 }
 
 /// What the game needs from the active account at launch.
@@ -48,6 +62,7 @@ pub async fn accounts_list(state: State<'_, AppState>) -> Result<AccountsView> {
     Ok(AccountsView {
         active: store.data.active.clone(),
         accounts: store.public(),
+        offline_allowed: offline_allowed(&store),
     })
 }
 
@@ -70,9 +85,6 @@ pub async fn account_remove(state: State<'_, AppState>, uuid: String) -> Result<
 
 #[tauri::command]
 pub async fn account_add_offline(state: State<'_, AppState>, name: String) -> Result<Account> {
-    if !cfg!(debug_assertions) {
-        return Err(msg("Offline accounts are only available in dev builds."));
-    }
     let name = name.trim().to_string();
     if !is_valid_name(&name) {
         return Err(msg("Use 3–16 letters, numbers or underscores."));
@@ -83,6 +95,19 @@ pub async fn account_add_offline(state: State<'_, AppState>, name: String) -> Re
         kind: AccountKind::Offline,
     };
     let mut store = state.accounts.lock().await;
+    if !offline_allowed(&store) {
+        return Err(msg(
+            "Sign in with a Microsoft account that owns Minecraft first. Then you can add offline accounts.",
+        ));
+    }
+    if store
+        .data
+        .accounts
+        .iter()
+        .any(|a| a.account.uuid == account.uuid && a.account.kind == AccountKind::Microsoft)
+    {
+        return Err(msg("That name belongs to your Microsoft account."));
+    }
     store.upsert(StoredAccount {
         account: account.clone(),
         refresh_token: None,

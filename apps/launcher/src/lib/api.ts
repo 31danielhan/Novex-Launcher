@@ -9,6 +9,8 @@ export interface Account {
 export interface AccountsView {
   active: string | null;
   accounts: Account[];
+  /** Offline accounts need a Microsoft account that owns the game first (except dev builds). */
+  offlineAllowed: boolean;
 }
 
 export type LoaderKind = "vanilla" | "fabric" | "quilt" | "forge" | "neoforge";

@@ -27,6 +27,7 @@ interface LauncherState {
   instances: Instance[];
   accounts: Account[];
   activeAccount: string | null;
+  offlineAllowed: boolean;
   status: Record<string, Status>;
   logs: Record<string, string[]>;
   error: string | null;
@@ -67,6 +68,7 @@ export const useLauncher = create<LauncherState>((set, get) => ({
   instances: [],
   accounts: [],
   activeAccount: null,
+  offlineAllowed: false,
   status: {},
   logs: {},
   error: null,
@@ -94,7 +96,7 @@ export const useLauncher = create<LauncherState>((set, get) => ({
     if (!inTauri) return;
     try {
       const v = await api.accounts();
-      set({ accounts: v.accounts, activeAccount: v.active });
+      set({ accounts: v.accounts, activeAccount: v.active, offlineAllowed: v.offlineAllowed });
     } catch (e) {
       set({ error: errorText(e) });
     }

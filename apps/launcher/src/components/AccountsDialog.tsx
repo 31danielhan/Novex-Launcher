@@ -3,7 +3,6 @@ import { Check, Copy, Loader2, LogIn, Trash2, UserPlus } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { api, errorText, type DeviceCode } from "../lib/api";
 import { useLauncher } from "../launcher";
-import { useSystemInfo } from "../lib/system";
 import { Dialog, inputClass } from "./Dialog";
 import { Badge, Button, cx } from "./ui";
 
@@ -92,8 +91,8 @@ function SignIn({ onDone, onCancel }: { onDone: () => void; onCancel: () => void
 }
 
 export function AccountsDialog() {
-  const { accountsOpen, openAccounts, accounts, activeAccount, refreshAccounts } = useLauncher();
-  const info = useSystemInfo();
+  const { accountsOpen, openAccounts, accounts, activeAccount, offlineAllowed, refreshAccounts } =
+    useLauncher();
   const [signingIn, setSigningIn] = useState(false);
   const [offlineName, setOfflineName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -145,7 +144,7 @@ export function AccountsDialog() {
                       <span className="flex-1">
                         <span className="block font-medium">{a.name}</span>
                         <span className="text-[12px] text-muted">
-                          {a.kind === "microsoft" ? "Microsoft" : "Offline (dev)"}
+                          {a.kind === "microsoft" ? "Microsoft" : "Offline"}
                         </span>
                       </span>
                       {active && <Badge>Active</Badge>}
@@ -173,28 +172,37 @@ export function AccountsDialog() {
             Sign in with Microsoft
           </Button>
 
-          {info?.devBuild && (
-            <form
-              className="hairline flex gap-2 border-t pt-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                run(async () => {
-                  await api.addOffline(offlineName);
-                  setOfflineName("");
-                });
-              }}
-            >
-              <input
-                value={offlineName}
-                onChange={(e) => setOfflineName(e.target.value)}
-                placeholder="Offline name (dev builds only)"
-                className={inputClass}
-              />
-              <Button icon={UserPlus} type="submit" disabled={!offlineName.trim()}>
-                Add
-              </Button>
-            </form>
-          )}
+          <div className="hairline space-y-2 border-t pt-4">
+            <p className="text-[12px] font-medium text-muted">Offline account</p>
+            {offlineAllowed ? (
+              <form
+                className="flex gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  run(async () => {
+                    await api.addOffline(offlineName);
+                    setOfflineName("");
+                  });
+                }}
+              >
+                <input
+                  value={offlineName}
+                  onChange={(e) => setOfflineName(e.target.value)}
+                  placeholder="Player name"
+                  maxLength={16}
+                  className={inputClass}
+                />
+                <Button icon={UserPlus} type="submit" disabled={!offlineName.trim()}>
+                  Add
+                </Button>
+              </form>
+            ) : (
+              <p className="text-[12px] text-muted">
+                Sign in with a Microsoft account that owns Minecraft first, then you can add offline
+                accounts for singleplayer and LAN.
+              </p>
+            )}
+          </div>
 
           {error && <p className="text-[13px] text-danger">{error}</p>}
         </div>

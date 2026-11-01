@@ -22,7 +22,10 @@ pub fn client_id() -> Result<String> {
         .or_else(|| option_env!("NOVEX_MSA_CLIENT_ID").map(str::to_string))
         .filter(|s| !s.is_empty())
         .ok_or_else(|| {
-            msg("Microsoft sign-in isn't configured. Set NOVEX_MSA_CLIENT_ID to your Azure app's client ID.")
+            msg(
+                "Microsoft sign-in isn't set up in this build. It needs an Azure app ID, set as \
+                 NOVEX_MSA_CLIENT_ID when the launcher is built.",
+            )
         })
 }
 
