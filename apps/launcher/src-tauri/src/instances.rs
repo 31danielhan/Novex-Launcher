@@ -60,6 +60,7 @@ impl Instance {
                 .jvm_args
                 .clone()
                 .unwrap_or_else(|| global.jvm_args.clone()),
+            ..global.clone()
         }
     }
 }

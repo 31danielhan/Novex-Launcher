@@ -109,6 +109,26 @@ npm run tauri build
 
 To release, push a `v*` tag. `release.yml` builds macOS (universal), Windows x64/ARM64 and Linux x64/ARM64 into a draft GitHub Release.
 
+## Updates
+
+Installed launchers update themselves from GitHub Releases. Everything is signed with one key pair; the public key is in `tauri.conf.json` (`plugins.updater.pubkey`), and the app refuses anything it didn't sign.
+
+- **App updates:** publishing a release made by `release.yml` makes it "latest". Apps read its `latest.json`, then download, verify, install and restart. On Linux only the AppImage updates itself; `.deb` and `.rpm` installs update through the package manager.
+- **Interface updates:** pushing a `ui-v0.1.1` tag runs `ui-release.yml`, which builds the frontend, signs it and uploads it to the rolling `ui-latest` pre-release. Apps use it only when it is newer than their built-in interface and built for the same command API (`src-tauri/ui-api`). Bump that number whenever Tauri commands change. A bundle that fails to start is dropped on the next launch, and Settings → Updates can switch back to the built-in interface.
+
+### Setup
+
+1. Keep the private key safe: `~/.tauri/novex-updater.key`. If it's lost, existing installs can never update again. If it leaks, anyone can ship updates to your users.
+2. Add GitHub Actions secrets:
+   - `TAURI_SIGNING_PRIVATE_KEY`: the contents of that file.
+   - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: empty, since the key has no password.
+3. Optional macOS signing and notarization (Apple Developer account): `APPLE_CERTIFICATE` (base64 .p12), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (app-specific password) and `APPLE_TEAM_ID`. Missing secrets are skipped, and the build stays unsigned.
+4. Windows code signing isn't set up. Unsigned installers show a SmartScreen warning until the app builds reputation or is signed (for example with Azure Trusted Signing).
+
+Builds made by GitHub Actions look for updates in the repository they were built in. Set `NOVEX_UPDATE_REPO=owner/name` to build elsewhere. Local builds without it say updates aren't set up.
+
+To test locally, point a debug build at your own server with `NOVEX_UPDATE_ENDPOINT` (a `latest.json` URL) and `NOVEX_UI_MANIFEST_URL` (a `ui-bundle.json` URL). Signatures are still required. `examples/ui_bundle.rs` checks the interface update flow against such a server.
+
 ## Icons
 
 `apps/launcher/app-icon.png` is a placeholder. To swap it, replace the file and regenerate every size:

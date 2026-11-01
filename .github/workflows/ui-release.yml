@@ -1,0 +1,62 @@
+name: UI release
+
+# Push a tag like ui-v0.1.1 to ship an interface-only update to existing installs.
+# The version must be newer than the app version it targets, and the bundle only reaches apps
+# whose command API (apps/launcher/src-tauri/ui-api) matches.
+on:
+  push:
+    tags: ["ui-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: apps/launcher
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check the signing key
+        run: |
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            echo "::error::Set the TAURI_SIGNING_PRIVATE_KEY secret. Apps only accept signed interface updates."
+            exit 1
+          fi
+
+      - run: npm ci
+
+      - name: Build the bundle
+        run: |
+          version="${GITHUB_REF_NAME#ui-v}"
+          api="$(tr -d '[:space:]' < src-tauri/ui-api)"
+          npm run build
+          printf '{"version":"%s","api":%s}\n' "$version" "$api" > dist/novex-ui.json
+          (cd dist && zip -qr ../ui-bundle.zip .)
+          npx tauri signer sign ui-bundle.zip
+          printf '{"version":"%s","api":%s,"signature":"%s"}\n' \
+            "$version" "$api" "$(cat ui-bundle.zip.sig)" > ui-bundle.json
+          cat ui-bundle.json
+
+      # A rolling pre-release keeps a stable download URL without becoming "latest",
+      # which the app updater reads.
+      - name: Publish to the ui-latest release
+        run: |
+          if ! gh release view ui-latest > /dev/null 2>&1; then
+            gh release create ui-latest --prerelease --title "Interface updates" \
+              --notes "Signed interface bundles that installed launchers download automatically."
+          fi
+          # Zip first: a new manifest never points at an old zip (that would just fail the
+          # signature check, but there's no need to).
+          gh release upload ui-latest ui-bundle.zip --clobber
+          gh release upload ui-latest ui-bundle.json --clobber

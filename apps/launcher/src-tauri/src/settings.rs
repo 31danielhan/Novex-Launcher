@@ -14,6 +14,8 @@ pub struct Settings {
     /// Overrides the managed runtime when set.
     pub java_path: Option<String>,
     pub jvm_args: String,
+    /// Check GitHub for launcher and interface updates at startup.
+    pub auto_update: bool,
 }
 
 impl Default for Settings {
@@ -22,6 +24,7 @@ impl Default for Settings {
             max_memory_mb: 4096,
             java_path: None,
             jvm_args: String::new(),
+            auto_update: true,
         }
     }
 }

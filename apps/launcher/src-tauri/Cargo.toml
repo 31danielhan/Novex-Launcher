@@ -31,6 +31,9 @@ aes-gcm = "0.10"
 uuid = { version = "1", features = ["v4"] }
 zip = { version = "2", default-features = false, features = ["deflate"] }
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+tauri-plugin-updater = "2"
+minisign-verify = "0.3.0"
+semver = "1"
 
 [profile.release]
 codegen-units = 1

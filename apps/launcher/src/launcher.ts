@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
-import { api, errorText, inTauri, type Account, type Instance, type Source } from "./lib/api";
+import { api, errorText, inTauri, type Account, type AppUpdate, type Instance, type Source } from "./lib/api";
 
 export type Status =
   | { state: "idle" }
@@ -14,6 +14,11 @@ export interface PackProgress {
   done: number;
   total: number;
 }
+
+/** An update ready to apply: the app itself, or just the interface. */
+export type Available =
+  | { kind: "app"; update: AppUpdate }
+  | { kind: "ui"; version: string };
 
 const MAX_LOG_LINES = 5000;
 const IDLE: Status = { state: "idle" };
@@ -32,6 +37,9 @@ interface LauncherState {
   /** Instance that Browse installs into. */
   browseTarget: string | null;
   contentFor: string | null;
+  available: Available | null;
+  /** Bytes downloaded while an update installs; `null` when idle. */
+  updating: { downloaded: number; total: number | null } | null;
   accountsOpen: boolean;
   newInstanceOpen: boolean;
   logsFor: string | null;
@@ -43,6 +51,8 @@ interface LauncherState {
   kill: (id: string) => Promise<void>;
   installModpack: (source: Source, projectId: string, versionId: string | null, title: string) => Promise<boolean>;
   importModpack: () => Promise<void>;
+  checkForUpdates: (manual?: boolean) => Promise<void>;
+  applyUpdate: () => Promise<void>;
   setError: (e: string | null) => void;
   setNotice: (n: string | null) => void;
   setBrowseTarget: (id: string | null) => void;
@@ -64,6 +74,8 @@ export const useLauncher = create<LauncherState>((set, get) => ({
   pack: null,
   browseTarget: null,
   contentFor: null,
+  available: null,
+  updating: null,
   accountsOpen: false,
   newInstanceOpen: false,
   logsFor: null,
@@ -153,6 +165,40 @@ export const useLauncher = create<LauncherState>((set, get) => ({
     }
   },
 
+  checkForUpdates: async (manual = false) => {
+    try {
+      // A new app release beats an interface-only update.
+      const app = await api.checkAppUpdate();
+      if (app) return set({ available: { kind: "app", update: app } });
+      const ui = await api.checkUiUpdate().catch((e) => {
+        // A missing interface channel is normal; only report it when asked.
+        if (manual) throw e;
+        return null;
+      });
+      set({ available: ui ? { kind: "ui", version: ui.version } : null });
+      if (manual && !ui) set({ notice: "Novex is up to date." });
+    } catch (e) {
+      if (manual) set({ error: errorText(e) });
+    }
+  },
+
+  applyUpdate: async () => {
+    const a = get().available;
+    if (!a || get().updating) return;
+    set({ updating: { downloaded: 0, total: null } });
+    try {
+      if (a.kind === "app") {
+        // Restarts the app when done.
+        await api.installAppUpdate();
+      } else {
+        await api.installUiUpdate();
+        window.location.reload();
+      }
+    } catch (e) {
+      set({ error: errorText(e), updating: null });
+    }
+  },
+
   setError: (error) => set({ error }),
   setNotice: (notice) => set({ notice }),
   setBrowseTarget: (browseTarget) => set({ browseTarget }),
@@ -192,6 +238,10 @@ export async function initLauncher() {
       })),
   );
 
+  await listen<{ downloaded: number; total: number | null }>("app-update-progress", ({ payload }) =>
+    useLauncher.setState({ updating: payload }),
+  );
+
   await listen<PackProgress>("modpack-progress", ({ payload }) =>
     useLauncher.setState({ pack: payload }),
   );
@@ -217,6 +267,9 @@ export async function initLauncher() {
     refresh();
   });
 
+  // Tells the backend this interface started fine, so a downloaded one is kept.
+  api.uiBootOk().catch(() => {});
+
   await Promise.all([refresh(), refreshAccounts()]);
   const running = await api.running().catch(() => [] as string[]);
   useLauncher.setState((s) => ({
@@ -225,4 +278,7 @@ export async function initLauncher() {
       ...Object.fromEntries(running.map((id) => [id, { state: "running" } as Status])),
     },
   }));
+
+  const settings = await api.settings().catch(() => null);
+  if (settings?.autoUpdate) useLauncher.getState().checkForUpdates();
 }

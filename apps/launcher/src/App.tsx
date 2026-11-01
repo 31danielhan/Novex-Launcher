@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { CheckCircle2, Loader2, Plus, Search, UserRound, X } from "lucide-react";
+import { ArrowUpCircle, CheckCircle2, Loader2, Plus, Search, UserRound, X } from "lucide-react";
 import { Sidebar } from "./components/Sidebar";
 import { AccountsDialog, Avatar } from "./components/AccountsDialog";
 import { NewInstanceDialog } from "./components/NewInstanceDialog";
@@ -39,6 +39,7 @@ function TopBar({ title }: { title: string }) {
   return (
     <header className="flex items-center gap-3 px-6 pb-4 pt-5">
       <h1 className="flex-1 text-[22px] font-semibold tracking-tight">{title}</h1>
+      <UpdateButton />
       <button
         onClick={() => setScreen("browse")}
         className="hairline shadow-card flex h-10 w-64 items-center gap-2 rounded-full border bg-surface px-4 text-[13px] text-muted transition hover:text-fg"
@@ -62,6 +63,30 @@ function TopBar({ title }: { title: string }) {
         {name ? <Avatar name={name} size={32} /> : <UserRound size={17} />}
       </button>
     </header>
+  );
+}
+
+function UpdateButton() {
+  const { available, updating, applyUpdate } = useLauncher();
+  if (!available) return null;
+  const label =
+    available.kind === "app" ? `Update to ${available.update.version}` : `New interface ${available.version}`;
+  const pct =
+    updating?.total ? Math.round((updating.downloaded / updating.total) * 100) : null;
+  return (
+    <button
+      onClick={applyUpdate}
+      disabled={!!updating}
+      title={
+        available.kind === "app"
+          ? "Downloads the update, then restarts Novex"
+          : "Downloads the new interface and reloads it"
+      }
+      className="flex h-10 items-center gap-1.5 rounded-full border border-success/30 bg-success/10 px-4 text-[13px] font-medium text-success transition hover:bg-success/15 disabled:cursor-wait"
+    >
+      {updating ? <Loader2 size={15} className="animate-spin" /> : <ArrowUpCircle size={15} />}
+      {updating ? `Updating${pct !== null ? ` ${pct}%` : "…"}` : label}
+    </button>
   );
 }
 

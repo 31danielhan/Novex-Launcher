@@ -140,6 +140,19 @@ export interface Settings {
   maxMemoryMb: number;
   javaPath: string | null;
   jvmArgs: string;
+  autoUpdate: boolean;
+}
+
+export interface UpdateInfo {
+  appVersion: string;
+  configured: boolean;
+  uiVersion: string | null;
+}
+
+export interface AppUpdate {
+  version: string;
+  currentVersion: string;
+  notes: string | null;
 }
 
 export const inTauri = isTauri();
@@ -199,6 +212,14 @@ export const api = {
   installModpack: (source: Source, projectId: string, versionId: string | null, title: string) =>
     call<ModpackInstalled>("modpack_install", { source, projectId, versionId, title }),
   importModpack: (path: string) => call<ModpackInstalled>("modpack_import", { path }),
+
+  updateInfo: () => call<UpdateInfo>("update_info"),
+  checkAppUpdate: () => call<AppUpdate | null>("app_update_check"),
+  installAppUpdate: () => call<void>("app_update_install"),
+  checkUiUpdate: () => call<{ version: string } | null>("ui_update_check"),
+  installUiUpdate: () => call<string>("ui_update_install"),
+  uiBootOk: () => call<void>("ui_boot_ok"),
+  uiReset: () => call<void>("ui_reset"),
 
   settings: () => call<Settings>("settings_get"),
   saveSettings: (settings: Settings) => call<Settings>("settings_set", { settings }),

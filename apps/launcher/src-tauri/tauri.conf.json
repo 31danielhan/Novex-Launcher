@@ -13,6 +13,7 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "title": "Novex Launcher",
         "width": 1120,
         "height": 720,
@@ -23,6 +24,12 @@
     ],
     "security": {
       "csp": "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE1OTBCQjgxQjc0NTlDRjUKUldUMW5FVzNnYnVRRlRUSitHSTBCRjluUVFFZW1mcnJyVHlCb09HSWNKeTBKWWN3MW8rbEUzdEEK",
+      "windows": { "installMode": "passive" }
     }
   },
   "bundle": {
