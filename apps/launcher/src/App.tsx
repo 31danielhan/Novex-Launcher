@@ -37,8 +37,10 @@ function TopBar({ title }: { title: string }) {
   const name = accounts.find((a) => a.uuid === activeAccount)?.name;
 
   return (
-    <header className="flex items-center gap-3 px-6 pb-4 pt-5">
-      <h1 className="flex-1 text-[22px] font-semibold tracking-tight">{title}</h1>
+    <header data-tauri-drag-region className="flex items-center gap-3 px-6 pb-4 pt-5">
+      <h1 data-tauri-drag-region className="flex-1 select-none text-[22px] font-semibold tracking-tight">
+        {title}
+      </h1>
       <UpdateButton />
       <button
         onClick={() => setScreen("browse")}

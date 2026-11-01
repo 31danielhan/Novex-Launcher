@@ -102,4 +102,8 @@
   .shadow-card {
     box-shadow: var(--shadow);
   }
+  /* Space above the sidebar for the macOS window buttons. */
+  [data-platform="mac"] .titlebar-inset {
+    padding-top: 2.75rem;
+  }
 }

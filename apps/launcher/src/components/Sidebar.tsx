@@ -8,6 +8,7 @@ import {
   Swords,
   type LucideIcon,
 } from "lucide-react";
+import logo from "../assets/logo.svg";
 import { useApp, type Screen } from "../store";
 import { cx } from "./ui";
 
@@ -87,12 +88,10 @@ function ThemeSwitch() {
 
 export function Sidebar() {
   return (
-    <nav className="flex w-56 shrink-0 flex-col px-3 pb-4 pt-5">
-      <div className="mb-6 flex items-center gap-2.5 px-2">
-        <div className="grid h-8 w-8 place-items-center rounded-full bg-accent text-[14px] font-bold text-accent-fg">
-          N
-        </div>
-        <span className="text-[15px] font-semibold tracking-tight">Novex</span>
+    <nav data-tauri-drag-region className="titlebar-inset flex w-56 shrink-0 flex-col px-3 pb-4 pt-5">
+      <div data-tauri-drag-region className="mb-6 flex items-center gap-2.5 px-2">
+        <img src={logo} alt="" draggable={false} className="pointer-events-none h-8 w-8" />
+        <span className="pointer-events-none text-[15px] font-semibold tracking-tight">Novex</span>
       </div>
       <div className="flex flex-col gap-1">
         {items.map((i) => (

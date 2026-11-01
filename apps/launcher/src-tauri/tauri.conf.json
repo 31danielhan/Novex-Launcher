@@ -19,7 +19,10 @@
         "height": 720,
         "minWidth": 900,
         "minHeight": 580,
-        "center": true
+        "center": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 18, "y": 22 }
       }
     ],
     "security": {
