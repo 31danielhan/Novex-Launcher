@@ -121,7 +121,7 @@ Installed launchers update themselves from GitHub Releases. Everything is signed
 1. Keep the private key safe: `~/.tauri/novex-updater.key`. If it's lost, existing installs can never update again. If it leaks, anyone can ship updates to your users.
 2. Add GitHub Actions secrets:
    - `TAURI_SIGNING_PRIVATE_KEY`: the contents of that file.
-   - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: empty, since the key has no password.
+   - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: only if the key has a password. Leave it out otherwise.
 3. Optional macOS signing and notarization (Apple Developer account): `APPLE_CERTIFICATE` (base64 .p12), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (app-specific password) and `APPLE_TEAM_ID`. Missing secrets are skipped, and the build stays unsigned.
 4. Windows code signing isn't set up. Unsigned installers show a SmartScreen warning until the app builds reputation or is signed (for example with Azure Trusted Signing).
 

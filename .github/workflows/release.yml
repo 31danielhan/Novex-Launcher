@@ -90,6 +90,10 @@ jobs:
           # Update artifacts (.tar.gz/.zip + .sig, and latest.json) need the signing key.
           if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
             echo "UPDATER_ARGS=--config src-tauri/tauri.updater.conf.json" >> "$GITHUB_ENV"
+            # GitHub can't store an empty secret, so a key without a password has none.
+            if [ -z "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" ]; then
+              echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=" >> "$GITHUB_ENV"
+            fi
           else
             echo "::warning::TAURI_SIGNING_PRIVATE_KEY isn't set, so this release can't update existing installs."
           fi
