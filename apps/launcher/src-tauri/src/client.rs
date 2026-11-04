@@ -3,12 +3,13 @@
 //! the mods that go with it from Modrinth: Fabric API (which the Fabric builds need) and Sodium or
 //! Embeddium for frame rate where they exist.
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::{Map, Value};
 use tauri::State;
 
 use crate::content::{self, ContentKind, Source};
 use crate::error::{msg, Result};
+use crate::game_options::{self, GameOptions};
 use crate::instances::{self, Instance};
 use crate::loaders::LoaderKind;
 use crate::platform::Paths;
@@ -78,8 +79,8 @@ pub struct ClientStatus {
     pub enabled: bool,
     /// Why the client can't run on this instance, if it can't.
     pub unsupported: Option<String>,
-    /// Module switches from config/novex-client.json.
-    pub modules: Map<String, Value>,
+    /// Installed, but the launcher carries a different build.
+    pub outdated: bool,
 }
 
 fn unsupported(inst: &Instance) -> Option<String> {
@@ -99,27 +100,67 @@ fn unsupported(inst: &Instance) -> Option<String> {
     ))
 }
 
-fn config_path(state: &AppState, id: &str) -> std::path::PathBuf {
-    instances::game_dir(&state.paths, id)
-        .join("config")
-        .join("novex-client.json")
-}
-
-fn read_config(state: &AppState, id: &str) -> Map<String, Value> {
-    std::fs::read(config_path(state, id))
-        .ok()
-        .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
-        .and_then(|v| v.as_object().cloned())
-        .unwrap_or_default()
+fn jar_path(paths: &Paths, id: &str) -> std::path::PathBuf {
+    instances::game_dir(paths, id).join("mods").join(FILE)
 }
 
 fn status(state: &AppState, inst: &Instance) -> ClientStatus {
-    let mods = instances::game_dir(&state.paths, &inst.id).join("mods");
+    let jar = jar_path(&state.paths, &inst.id);
     ClientStatus {
-        enabled: mods.join(FILE).exists(),
+        enabled: jar.exists(),
         unsupported: unsupported(inst),
-        modules: read_config(state, &inst.id),
+        outdated: matches!(
+            (std::fs::read(&jar), jar_for(inst)),
+            (Ok(current), Some(bundled)) if current != bundled
+        ),
     }
+}
+
+/// Writes the Client tab's settings into the instance's config/novex-client.json, leaving
+/// everything else there (such as the HUD layout) alone. The 1.8 page wins before 1.9. The game
+/// reads the file at startup, so this runs before every launch.
+pub fn apply(paths: &Paths, inst: &Instance, shared: &GameOptions, legacy: &GameOptions) -> Result<()> {
+    if !jar_path(paths, &inst.id).exists() {
+        return Ok(());
+    }
+    let old = game_options::version(&inst.version) < (1, 9, 0);
+    let path = instances::game_dir(paths, &inst.id)
+        .join("config")
+        .join("novex-client.json");
+    let mut cfg: Map<String, Value> = std::fs::read(&path)
+        .ok()
+        .and_then(|b| serde_json::from_slice(&b).ok())
+        .unwrap_or_default();
+    let before = cfg.clone();
+    let pages = [Some(shared), old.then_some(legacy)];
+    for (k, v) in pages.into_iter().flatten().flatten() {
+        // "hudSize.fps" sets fps inside the hudSize object.
+        match k.split_once('.') {
+            Some((group, key)) => {
+                let group = cfg.entry(group).or_insert_with(|| Value::Object(Map::new()));
+                if !group.is_object() {
+                    *group = Value::Object(Map::new());
+                }
+                group[key] = v.clone();
+            }
+            None => {
+                cfg.insert(k.clone(), v.clone());
+            }
+        }
+    }
+    if cfg != before {
+        std::fs::create_dir_all(path.parent().unwrap())?;
+        std::fs::write(&path, serde_json::to_vec_pretty(&Value::Object(cfg))?)?;
+    }
+    Ok(())
+}
+
+/// A running game holds the jar open, and on Windows it can't be changed.
+async fn ensure_stopped(state: &AppState, id: &str) -> Result<()> {
+    if state.running.lock().await.contains_key(id) {
+        return Err(msg("Close this instance first."));
+    }
+    Ok(())
 }
 
 /// Keeps an installed Novex Client current: if it's on for this instance and the launcher carries a
@@ -145,6 +186,16 @@ pub async fn client_status(
     instance_id: String,
 ) -> Result<ClientStatus> {
     let inst = instances::load(&state.paths, &instance_id)?;
+    Ok(status(&state, &inst))
+}
+
+#[tauri::command]
+pub async fn client_update(
+    state: State<'_, AppState>,
+    instance_id: String,
+) -> Result<ClientStatus> {
+    ensure_stopped(&state, &instance_id).await?;
+    let inst = instances::load(&state.paths, &instance_id)?;
     sync(&state.paths, &inst)?;
     Ok(status(&state, &inst))
 }
@@ -155,6 +206,7 @@ pub async fn client_set_enabled(
     instance_id: String,
     enabled: bool,
 ) -> Result<ClientStatus> {
+    ensure_stopped(&state, &instance_id).await?;
     let inst = instances::load(&state.paths, &instance_id)?;
     let mods = instances::game_dir(&state.paths, &inst.id).join("mods");
     if enabled {
@@ -190,28 +242,6 @@ pub async fn client_set_enabled(
         // Companion mods stay: they're ordinary mods the player may want anyway.
         std::fs::remove_file(mods.join(FILE))?;
     }
-    Ok(status(&state, &inst))
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ModuleChange {
-    pub key: String,
-    pub value: Value,
-}
-
-/// Changes module switches. The game reads the file at startup, so changes apply on next launch.
-#[tauri::command]
-pub async fn client_set_module(
-    state: State<'_, AppState>,
-    instance_id: String,
-    change: ModuleChange,
-) -> Result<ClientStatus> {
-    let inst = instances::load(&state.paths, &instance_id)?;
-    let mut cfg = read_config(&state, &inst.id);
-    cfg.insert(change.key, change.value);
-    let path = config_path(&state, &inst.id);
-    std::fs::create_dir_all(path.parent().unwrap())?;
-    std::fs::write(&path, serde_json::to_vec_pretty(&Value::Object(cfg))?)?;
     Ok(status(&state, &inst))
 }
 
@@ -275,6 +305,41 @@ mod sync_tests {
             jar_for(&inst).unwrap()
         );
         assert!(!sync(&paths, &inst).unwrap());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn settings_merge_into_the_config_and_keep_the_rest() {
+        let dir = std::env::temp_dir().join(format!("novex-apply-{}", std::process::id()));
+        let (paths, inst) = instance(&dir, "1.8.9");
+        let game = instances::game_dir(&paths, &inst.id);
+        let shared = GameOptions::from([
+            ("fps".to_string(), Value::Bool(false)),
+            ("hudSize.fps".to_string(), Value::from(1.5)),
+        ]);
+        let legacy = GameOptions::from([("fps".to_string(), Value::Bool(true))]);
+
+        // Not installed: no config appears.
+        apply(&paths, &inst, &shared, &legacy).unwrap();
+        assert!(!game.join("config").exists());
+
+        std::fs::create_dir_all(game.join("mods")).unwrap();
+        std::fs::write(game.join("mods").join(FILE), b"jar").unwrap();
+        std::fs::create_dir_all(game.join("config")).unwrap();
+        let file = game.join("config").join("novex-client.json");
+        std::fs::write(&file, r#"{"hud":{"fps":1},"ping":true}"#).unwrap();
+
+        apply(&paths, &inst, &shared, &legacy).unwrap();
+        let cfg: Value = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
+        assert_eq!(cfg["fps"], true, "the 1.8 page wins before 1.9");
+        assert_eq!(cfg["ping"], true);
+        assert_eq!(cfg["hud"]["fps"], 1);
+        assert_eq!(cfg["hudSize"]["fps"], 1.5);
+
+        let (_, newer) = instance(&dir, "26.3");
+        apply(&paths, &newer, &shared, &legacy).unwrap();
+        let cfg: Value = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
+        assert_eq!(cfg["fps"], false, "the shared page applies from 1.9");
         std::fs::remove_dir_all(&dir).ok();
     }
 }

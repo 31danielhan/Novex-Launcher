@@ -6,26 +6,58 @@ import { useLauncher } from "../launcher";
 import { Dialog, inputClass } from "./Dialog";
 import { Badge, Button, cx } from "./ui";
 
-/** Java's UUID.hashCode(), which the game uses to pick an offline player's default skin. */
-function uuidHash(uuid: string): number {
-  const hex = uuid.replace(/-/g, "");
-  const hilo = BigInt(`0x${hex.slice(0, 16)}`) ^ BigInt(`0x${hex.slice(16, 32)}`);
-  return Number(BigInt.asIntN(32, (hilo >> BigInt(32)) ^ hilo));
+const faces = new Map<string, Promise<string | null>>();
+
+/** The face and hat layer cut from a skin, as an 8x8 image. */
+function drawFace(base64: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const skin = new Image();
+    skin.onerror = reject;
+    skin.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 8;
+      const g = canvas.getContext("2d");
+      if (!g) return reject(new Error("no canvas"));
+      g.drawImage(skin, 8, 8, 8, 8, 0, 0, 8, 8);
+      g.drawImage(skin, 40, 8, 8, 8, 0, 0, 8, 8);
+      resolve(canvas.toDataURL());
+    };
+    skin.src = `data:image/png;base64,${base64}`;
+  });
 }
 
-/** Head image: the real skin for Microsoft accounts, Steve or Alex for offline ones. */
-function headUrl(account: Account, px: number): string {
-  const who =
-    account.kind === "microsoft" ? account.uuid : uuidHash(account.uuid) & 1 ? "MHF_Alex" : "MHF_Steve";
-  return `https://mc-heads.net/avatar/${who}/${px}`;
+/** Cut from the same skin the game gets, so the two always match. Null if the name has none. */
+function faceOf(name: string): Promise<string | null> {
+  let face = faces.get(name);
+  if (!face) {
+    face = api
+      .accountSkin(name)
+      .then((skin) => (skin ? drawFace(skin) : null))
+      .catch(() => null);
+    faces.set(name, face);
+  }
+  return face;
 }
 
 export function Avatar({ account, size = 32 }: { account: Account; size?: number }) {
+  // undefined while loading; null means this name has no skin, which is Steve in game.
+  const [face, setFace] = useState<string | null | undefined>();
   const [failed, setFailed] = useState(false);
-  if (!failed) {
+
+  useEffect(() => {
+    let current = true;
+    setFace(undefined);
+    faceOf(account.name).then((f) => current && setFace(f));
+    return () => {
+      current = false;
+    };
+  }, [account.name]);
+
+  const src = face ?? (face === null ? `https://mc-heads.net/avatar/MHF_Steve/${size * 2}` : null);
+  if (src && !failed) {
     return (
       <img
-        src={headUrl(account, size * 2)}
+        src={src}
         alt=""
         width={size}
         height={size}

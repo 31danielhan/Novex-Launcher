@@ -1,8 +1,9 @@
 import { t } from "./i18n";
 import { useCallback, useEffect, useState } from "react";
 import logo from "./assets/logo.svg";
-import { ArrowUpCircle, CheckCircle2, Loader2, Plus, Search, UserRound, X } from "lucide-react";
+import { ArrowUpCircle, CheckCircle2, Loader2, Plus, UserRound, X } from "lucide-react";
 import { Sidebar } from "./components/Sidebar";
+import { GlobalSearch } from "./components/GlobalSearch";
 import { AccountsDialog, Avatar } from "./components/AccountsDialog";
 import { NewInstanceDialog } from "./components/NewInstanceDialog";
 import { LogsDialog } from "./components/LogsDialog";
@@ -37,24 +38,17 @@ const screens: Record<Screen, () => JSX.Element> = {
 };
 
 function TopBar({ title }: { title: string }) {
-  const setScreen = useApp((s) => s.setScreen);
   const { accounts, activeAccount, openAccounts, openNewInstance } = useLauncher();
   const active = accounts.find((a) => a.uuid === activeAccount);
   const name = active?.name;
 
   return (
     <header data-tauri-drag-region className="flex items-center gap-3 px-6 pb-4 pt-5">
-      <h1 data-tauri-drag-region className="display flex-1 select-none text-[26px] font-semibold">
+      <h1 data-tauri-drag-region className="display flex-1 select-none whitespace-nowrap text-[26px] font-semibold">
         {title}
       </h1>
       <UpdateButton />
-      <button
-        onClick={() => setScreen("browse")}
-        className="glass hairline shadow-card lift flex h-10 w-64 items-center gap-2 rounded-lg border bg-surface px-3 text-[13px] text-muted hover:border-accent/40 hover:text-fg"
-      >
-        <Search size={15} />
-        {t("Find mods and modpacks")}
-      </button>
+      <GlobalSearch />
       <button
         onClick={() => openNewInstance(true)}
         className="lift press flex h-10 items-center gap-1.5 rounded-lg bg-accent px-4 text-[13px] font-semibold text-accent-fg transition hover:brightness-110"
@@ -101,12 +95,37 @@ function UpdateButton() {
 }
 
 function StatusBar() {
-  const { status, instances, error, setError, notice, setNotice, pack } = useLauncher();
+  const { alerts, dismissAlert, applyUpdate, openContent, status, instances, error, setError, notice, setNotice, pack } = useLauncher();
   const launching = Object.entries(status).find(([, s]) => s.state === "launching");
   const name = launching && instances.find((i) => i.id === launching[0])?.name;
 
   return (
     <div className="pointer-events-none fixed bottom-4 right-4 z-40 flex max-w-sm flex-col items-end gap-2">
+      {alerts.map((a) => (
+        <div key={a.key} className="glass hairline pointer-events-auto flex animate-[fade_150ms_ease-out] items-center gap-3 rounded-xl border bg-surface px-4 py-3 shadow-xl">
+          <ArrowUpCircle size={16} className="shrink-0 text-success" />
+          <p className="select-text text-[13px]">{a.text}</p>
+          {a.action && (
+            <button
+              className="shrink-0 text-[13px] font-semibold text-accent hover:underline"
+              onClick={() => {
+                const action = a.action!;
+                dismissAlert(a.key);
+                if ("run" in action) void applyUpdate();
+                else {
+                  openContent(action.instance);
+                  useApp.getState().setScreen("instances");
+                }
+              }}
+            >
+              {a.action.label}
+            </button>
+          )}
+          <button aria-label={t("Dismiss")} onClick={() => dismissAlert(a.key)} className="text-muted hover:text-fg">
+            <X size={14} />
+          </button>
+        </div>
+      ))}
       {error && (
         <div className="glass hairline pointer-events-auto flex animate-[slide-in_220ms_cubic-bezier(0.2,0.8,0.2,1)] items-start gap-3 rounded-xl border bg-surface px-4 py-3 shadow-xl">
           <p className="select-text text-[13px] text-danger">{error}</p>

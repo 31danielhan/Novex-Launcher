@@ -37,9 +37,9 @@ pub struct TemplateInfo {
     pub include_config: bool,
 }
 
-type Version = (u32, u32, u32);
+pub(crate) type Version = (u32, u32, u32);
 
-fn version(v: &str) -> Version {
+pub(crate) fn version(v: &str) -> Version {
     let mut parts = v
         .split(|c: char| !c.is_ascii_digit())
         .filter(|p| !p.is_empty())

@@ -23,6 +23,10 @@ pub struct Settings {
     pub game_options: GameOptions,
     /// The 1.8 page of Game settings: wins over `game_options` on versions before 1.9.
     pub game_options_legacy: GameOptions,
+    /// Novex Client settings written into every instance that has it, before it launches.
+    pub client_options: GameOptions,
+    /// The 1.8 page of the client settings: wins over `client_options` on versions before 1.9.
+    pub client_options_legacy: GameOptions,
     /// Set up new instances from this instance's settings (see game_options).
     pub template: Option<TemplateInfo>,
 }
@@ -37,6 +41,8 @@ impl Default for Settings {
             curseforge_api_key: None,
             game_options: GameOptions::default(),
             game_options_legacy: GameOptions::default(),
+            client_options: GameOptions::default(),
+            client_options_legacy: GameOptions::default(),
             template: None,
         }
     }

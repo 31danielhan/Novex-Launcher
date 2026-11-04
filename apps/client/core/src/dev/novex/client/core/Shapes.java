@@ -2,12 +2,13 @@ package dev.novex.client.core;
 
 /**
  * Smooth rounded shapes from plain rectangle fills, so every version draws them the same way. Corners
- * are drawn row by row at a quarter of a GUI pixel, with a partly transparent pixel where the curve
- * crosses each row (anti-aliasing). The straight middle is one fill, so a shape costs a few dozen fills.
+ * are drawn row by row at half a GUI pixel, with a partly transparent pixel where the curve
+ * crosses each row (anti-aliasing). Only corners are drawn row by row, so a shape costs a few dozen fills:
+ * this runs every frame, on versions where each fill is an object for the renderer.
  */
 final class Shapes {
 	/** Sub-pixel steps per GUI pixel. */
-	private static final int Q = 4;
+	private static final int Q = 2;
 
 	/** Rounded rectangle with one radius for every corner. */
 	static void round(Gfx g, float x1, float y1, float x2, float y2, float r, int color) {
@@ -34,6 +35,13 @@ final class Shapes {
 		g.pop();
 	}
 
+	/** A small plate with stepped corners in three fills, for what's drawn over the game every frame. */
+	static void plate(Gfx g, int x1, int y1, int x2, int y2, int color) {
+		g.fill(x1 + 1, y1, x2 - 1, y1 + 1, color);
+		g.fill(x1, y1 + 1, x2, y2 - 1, color);
+		g.fill(x1 + 1, y2 - 1, x2 - 1, y2, color);
+	}
+
 	/** Rounded outline, `t` GUI pixels thick. */
 	static void outline(Gfx g, float x1, float y1, float x2, float y2, float r, float t, int color) {
 		g.push(x1, y1, 1f / Q);
@@ -41,7 +49,14 @@ final class Shapes {
 		float ro = Math.min(r, Math.min(x2 - x1, y2 - y1) / 2f) * Q;
 		float ri = Math.max(0, ro - t * Q);
 		int th = Math.round(t * Q);
+		// Rows that touch a corner or the top and bottom edges; the straight sides between them are one fill.
+		int end = Math.max((int) Math.ceil(ro), th);
+		if (h - 2 * end > 0) {
+			g.fill(0, end, th, h - end, color);
+			g.fill(w - th, end, w, h - end, color);
+		}
 		for (int y = 0; y < h; y++) {
+			if (y == end && h - end > y) y = Math.max(y, h - end);
 			// Distance into the corner zone from the top or bottom edge.
 			float dy = y < ro ? ro - y - 0.5f : y >= h - ro ? y + 0.5f - (h - ro) : -1;
 			float outer = dy >= 0 ? inset(ro, dy) : 0;
@@ -64,10 +79,12 @@ final class Shapes {
 
 	/** A soft shadow: rounded rings that fade outwards. */
 	static void shadow(Gfx g, float x1, float y1, float x2, float y2, float r, float size, int color) {
-		int steps = Math.max(1, Math.round(size));
+		int steps = Math.max(1, Math.min(3, Math.round(size)));
+		float step = size / steps;
 		for (int i = steps; i >= 1; i--) {
 			float a = (1f - (float) i / (steps + 1)) / steps * 1.6f;
-			round(g, x1 - i, y1 - i + size / 3, x2 + i, y2 + i + size / 3, r + i, alpha(color, a));
+			float d = i * step;
+			round(g, x1 - d, y1 - d + size / 3, x2 + d, y2 + d + size / 3, r + d, alpha(color, a));
 		}
 	}
 

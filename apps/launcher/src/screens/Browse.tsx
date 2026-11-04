@@ -1,6 +1,7 @@
+import { useApp } from "../store";
 import { t } from "../i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Compass, Download, ExternalLink, Loader2, Search } from "lucide-react";
+import { Check, Compass, Download, ExternalLink, Loader2, Search, X } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   api,
@@ -31,11 +32,11 @@ const sourceLabel: Record<Source, string> = { modrinth: "Modrinth", curseforge: 
 const key = (source: Source, id: string) => `${source}:${id}`;
 
 /** Installs a project: modpacks become new instances, everything else goes into `target`. */
-function useInstall(target: Instance | undefined, onInstalled: () => void) {
+function useInstall(onInstalled: () => void) {
   const { installModpack, setError, setNotice } = useLauncher();
   const [busy, setBusy] = useState<Set<string>>(new Set());
 
-  const install = async (hit: SearchHit, kind: ContentKind, versionId: string | null = null) => {
+  const install = async (hit: SearchHit, kind: ContentKind, versionId: string | null, target?: Instance) => {
     const k = key(hit.source, hit.id);
     setBusy((b) => new Set(b).add(k));
     try {
@@ -46,6 +47,7 @@ function useInstall(target: Instance | undefined, onInstalled: () => void) {
         const extra = names.length > 1 ? ` with ${names.slice(1).join(", ")}` : "";
         setNotice(`Installed ${hit.title}${extra} in ${target.name}.`);
         onInstalled();
+        return true;
       }
     } catch (e) {
       setError(errorText(e));
@@ -56,80 +58,116 @@ function useInstall(target: Instance | undefined, onInstalled: () => void) {
         return n;
       });
     }
+    return false;
   };
   return { install, busy };
 }
 
-function ProjectDialog({
+type Install = ReturnType<typeof useInstall>["install"];
+
+/** One instance on the install page: whether the project works there, and a version to install. */
+function InstanceRow({
   hit,
   kind,
-  target,
-  installed,
-  onClose,
+  instance,
+  suggested,
   install,
 }: {
   hit: SearchHit;
   kind: ContentKind;
-  target: Instance | undefined;
-  installed: boolean;
-  onClose: () => void;
-  install: (hit: SearchHit, kind: ContentKind, versionId: string | null) => Promise<void>;
+  instance: Instance;
+  suggested: boolean;
+  install: Install;
 }) {
+  const noLoader = kind === "mod" && instance.loader === "vanilla";
+  const [versions, setVersions] = useState<ContentVersion[] | null>(noLoader ? [] : null);
+  const [version, setVersion] = useState("");
+  const [installed, setInstalled] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (noLoader) return;
+    api.contentVersions(hit.source, hit.id, kind, instance.id).then(setVersions).catch(() => setVersions([]));
+    api
+      .installedContent(instance.id)
+      .then((items) => setInstalled(items.some((i) => i.source === hit.source && i.projectId === hit.id)))
+      .catch(() => {});
+  }, [hit, kind, instance.id, noLoader]);
+
+  const usable = versions?.filter((v) => v.file.url) ?? [];
+  const go = async () => {
+    setBusy(true);
+    if (await install(hit, kind, version || null, instance)) setInstalled(true);
+    setBusy(false);
+  };
+
+  return (
+    <div className={cx("flex items-center gap-3 rounded-lg px-3 py-2.5", suggested ? "bg-accent/10" : "bg-raised")}>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-medium">{instance.name}</p>
+        <p className="truncate text-[11px] text-muted">{describe(instance)}</p>
+      </div>
+      {versions === null ? (
+        <Loader2 size={15} className="animate-spin text-muted" />
+      ) : usable.length === 0 ? (
+        <span className="text-[12px] text-muted">{t("Not compatible")}</span>
+      ) : (
+        <>
+          <select
+            value={version}
+            onChange={(e) => setVersion(e.target.value)}
+            aria-label={t("Version")}
+            className={`${inputClass} h-8 w-40 appearance-auto`}
+          >
+            <option value="">{t("Latest version")}</option>
+            {usable.slice(0, 30).map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.versionNumber}
+              </option>
+            ))}
+          </select>
+          {installed && !version ? (
+            <Badge tone="success">{t("Installed")}</Badge>
+          ) : (
+            <Button className="h-8" disabled={busy} onClick={go}>
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              {t("Install")}
+            </Button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** The versions of a modpack, each one installing as a new instance. */
+function ModpackVersions({ hit, install, onClose }: { hit: SearchHit; install: Install; onClose: () => void }) {
   const [versions, setVersions] = useState<ContentVersion[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
-    const targetId = kind === "modpack" ? null : (target?.id ?? null);
     api
-      .contentVersions(hit.source, hit.id, kind, targetId)
+      .contentVersions(hit.source, hit.id, "modpack", null)
       .then(setVersions)
       .catch((e) => setError(errorText(e)));
-  }, [hit, kind, target]);
+  }, [hit]);
 
   const pick = async (v: ContentVersion) => {
     setBusy(v.id);
-    await install(hit, kind, v.id);
+    await install(hit, "modpack", v.id);
     setBusy(null);
     onClose();
   };
 
   return (
-    <Dialog open wide onClose={onClose} title={hit.title}>
-      <div className="mb-5 flex gap-4">
-        <ProjectIcon url={hit.iconUrl} title={hit.title} size={64} />
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] text-muted">
-            by {hit.author} · {compactNumber(hit.downloads)} downloads · {sourceLabel[hit.source]}
-            {installed && " · Installed"}
-          </p>
-          <p className="mt-1 text-[13px]">{hit.description}</p>
-          <button
-            onClick={() => openUrl(hit.url)}
-            className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-muted hover:text-fg"
-          >
-            Open on {sourceLabel[hit.source]} <ExternalLink size={12} />
-          </button>
-        </div>
-      </div>
-
-      <h3 className="mb-2 text-[13px] font-semibold">
-        {kind === "modpack"
-          ? "Versions"
-          : target
-            ? `Versions for ${describe(target)}`
-            : "Versions"}
-      </h3>
+    <>
+      <h3 className="mb-2 text-[13px] font-semibold">Versions</h3>
       {error && <p className="rounded-lg bg-danger/10 px-3 py-2.5 text-[13px] text-danger">{error}</p>}
       {!versions && !error && (
         <div className="grid h-32 place-items-center text-muted">
           <Loader2 size={18} className="animate-spin" />
         </div>
-      )}
-      {versions?.length === 0 && (
-        <p className="rounded-lg bg-raised px-4 py-6 text-center text-[13px] text-muted">
-          No version of {hit.title} works with this instance.
-        </p>
       )}
       <div className="-mx-2 flex flex-col">
         {versions?.slice(0, 30).map((v) => (
@@ -144,7 +182,7 @@ function ProjectDialog({
             {v.channel !== "release" && <Badge>{v.channel}</Badge>}
             <Button
               className="h-8"
-              disabled={busy !== null || (kind !== "modpack" && !target) || !v.file.url}
+              disabled={busy !== null || !v.file.url}
               title={v.file.url ? undefined : "The author only allows downloads from CurseForge's website"}
               onClick={() => pick(v)}
             >
@@ -154,6 +192,55 @@ function ProjectDialog({
           </div>
         ))}
       </div>
+    </>
+  );
+}
+
+function ProjectDialog({
+  hit,
+  kind,
+  instances,
+  target,
+  onClose,
+  install,
+}: {
+  hit: SearchHit;
+  kind: ContentKind;
+  instances: Instance[];
+  target: Instance | undefined;
+  onClose: () => void;
+  install: Install;
+}) {
+  return (
+    <Dialog open wide onClose={onClose} title={hit.title}>
+      <div className="mb-5 flex gap-4">
+        <ProjectIcon url={hit.iconUrl} title={hit.title} size={64} />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] text-muted">
+            by {hit.author} · {compactNumber(hit.downloads)} downloads · {sourceLabel[hit.source]}
+          </p>
+          <p className="mt-1 text-[13px]">{hit.description}</p>
+          <button
+            onClick={() => openUrl(hit.url)}
+            className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-muted hover:text-fg"
+          >
+            Open on {sourceLabel[hit.source]} <ExternalLink size={12} />
+          </button>
+        </div>
+      </div>
+
+      {kind === "modpack" ? (
+        <ModpackVersions hit={hit} install={install} onClose={onClose} />
+      ) : (
+        <>
+          <h3 className="mb-2 text-[13px] font-semibold">{t("Install to")}</h3>
+          <div className="flex flex-col gap-1.5">
+            {instances.map((i) => (
+              <InstanceRow key={i.id} hit={hit} kind={kind} instance={i} suggested={i.id === target?.id} install={install} />
+            ))}
+          </div>
+        </>
+      )}
     </Dialog>
   );
 }
@@ -227,7 +314,13 @@ export function BrowseScreen() {
   const { instances, browseTarget, setBrowseTarget, pack } = useLauncher();
   const [source, setSource] = useState<Source>("modrinth");
   const [kind, setKind] = useState<ContentKind>("modpack");
+  const pendingSearch = useApp((a) => a.pendingSearch);
   const [query, setQuery] = useState("");
+  useEffect(() => {
+    if (pendingSearch?.target !== "browse") return;
+    setQuery(pendingSearch.query);
+    useApp.getState().setPendingSearch(null);
+  }, [pendingSearch]);
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -237,7 +330,8 @@ export function BrowseScreen() {
   const [installed, setInstalled] = useState<Set<string>>(new Set());
   const request = useRef(0);
 
-  const target = instances.find((i) => i.id === browseTarget) ?? instances[0];
+  // Set when browsing from an instance's page: results are limited to what works there.
+  const target = instances.find((i) => i.id === browseTarget);
   const forInstance = kind !== "modpack";
 
   useEffect(() => {
@@ -255,7 +349,7 @@ export function BrowseScreen() {
   }, [target]);
   useEffect(loadInstalled, [loadInstalled]);
 
-  const { install, busy } = useInstall(target, loadInstalled);
+  const { install, busy } = useInstall(loadInstalled);
 
   // Keyed on the values, not the instance object, so list refreshes don't re-run the search.
   const [gameVersion, loader] = [target?.version ?? null, target?.loader ?? null];
@@ -294,8 +388,7 @@ export function BrowseScreen() {
     return () => clearTimeout(t);
   }, [run, query]);
 
-  const vanillaMods = forInstance && kind === "mod" && target?.loader === "vanilla";
-  const needsInstance = forInstance && !target;
+  const needsInstance = forInstance && instances.length === 0;
 
   return (
     <>
@@ -339,29 +432,16 @@ export function BrowseScreen() {
           </button>
         ))}
         <div className="flex-1" />
-        {forInstance && instances.length > 0 && (
-          <label className="flex items-center gap-2 whitespace-nowrap text-[12px] text-muted">
-            Install to
-            <select
-              value={target?.id}
-              onChange={(e) => setBrowseTarget(e.target.value)}
-              className={`${inputClass} h-8 w-56 appearance-auto`}
-            >
-              {instances.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.name} · {describe(i)}
-                </option>
-              ))}
-            </select>
-          </label>
+        {forInstance && target && (
+          <button
+            onClick={() => setBrowseTarget(null)}
+            className="hairline inline-flex h-8 items-center gap-1.5 rounded-full border bg-surface px-3 text-[12px] font-medium text-muted hover:text-fg"
+          >
+            {t("Showing results for {name}", { name: target.name })}
+            <X size={13} />
+          </button>
         )}
       </div>
-
-      {vanillaMods && (
-        <p className="mb-4 rounded-xl bg-raised px-4 py-3 text-[13px] text-muted">
-          {target!.name} is a vanilla instance. Pick an instance with a mod loader to install mods.
-        </p>
-      )}
 
       {error ? (
         <EmptyState icon={Compass} title={t("Couldn't search")} body={error} />
@@ -378,9 +458,9 @@ export function BrowseScreen() {
                 key={k}
                 hit={h}
                 state={busy.has(k) ? "busy" : forInstance && installed.has(k) ? "installed" : "idle"}
-                disabled={vanillaMods || (kind === "modpack" && !!pack)}
+                disabled={kind === "modpack" && !!pack}
                 onOpen={() => setOpen(h)}
-                onInstall={() => install(h, kind)}
+                onInstall={() => (forInstance ? setOpen(h) : install(h, kind, null))}
               />
             );
           })}
@@ -400,8 +480,8 @@ export function BrowseScreen() {
         <ProjectDialog
           hit={open}
           kind={kind}
+          instances={instances}
           target={target}
-          installed={installed.has(key(open.source, open.id))}
           onClose={() => setOpen(null)}
           install={install}
         />

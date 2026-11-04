@@ -25,7 +25,19 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("mock")) {
     settings_set: (a) => (settings = a.settings as Record<string, unknown>),
     game_template_set: (a) => (settings = { ...settings, template: { name: instances.find((i) => i.id === a.instanceId)?.name, version: "26.3", includeConfig: a.includeConfig } }),
     game_template_clear: () => (settings = { ...settings, template: null }),
+    "plugin:event|listen": () => 1,
     running_instances: () => [],
+    content_sources: () => ({ curseforge: false }),
+    content_search: () => ({ total: 1, hits: [{ source: "modrinth", id: "sodium", title: "Sodium", author: "jellysquid", description: "A performance mod.", downloads: 1000000, iconUrl: null, url: "https://modrinth.com", categories: ["optimization"] }] }),
+    content_versions: (a) => (a.instanceId === "b" ? [] : [{ id: "v1", versionNumber: "0.6.0", channel: "release", loaders: ["fabric"], gameVersions: ["26.3"], published: "2026-10-01", file: { url: "https://example.com/a.jar" } }]),
+    client_status: (a) => ({ enabled: a.instanceId === "b", unsupported: null, outdated: a.instanceId === "b" }),
+    client_set_enabled: (a) => ({ enabled: a.enabled, unsupported: null, outdated: false }),
+    client_update: () => ({ enabled: true, unsupported: null, outdated: false }),
+    content_updates: (a) => (a.instanceId === "a" ? [{ kind: "mod", file: "sodium.jar", source: "modrinth", projectId: "sodium", versionId: "v2", version: "0.7.0" }] : []),
+    update_info: () => ({ appVersion: "0.2.0", configured: true, uiVersion: null }),
+    app_update_check: () => ({ version: "0.3.0", currentVersion: "0.2.0", notes: null }),
+    content_list: () => [],
+    content_install: () => ["Sodium"],
   };
   let callbacks = 0;
   Object.assign(window, {

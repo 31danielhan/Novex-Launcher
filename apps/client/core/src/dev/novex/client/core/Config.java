@@ -20,6 +20,21 @@ public final class Config {
 	/** A Novex Client button on the title screen. */
 	public boolean titleButton = true;
 
+	/** Size set in the launcher, by element id: replaces the scale in `hud` when the game starts. */
+	public Map<String, Float> hudSize = new HashMap<String, Float>();
+	/** Dark plates behind HUD text and keys. */
+	public boolean hudPlates = true;
+	/** Plate opacity, 0 to 100. */
+	public int hudPlateOpacity = 40;
+	public boolean hudShadow = false;
+	/** HUD text color, as 0xRRGGBB. */
+	public int hudTextColor = 0xF2F4F5;
+	/** Decimal places on coordinates, 0 to 2. */
+	public int coordinatesDecimals = 0;
+	public boolean coordinatesFacing = true;
+	public boolean keystrokesMouse = true;
+	public boolean keystrokesJump = true;
+
 	public boolean fps = true;
 	public boolean cps = true;
 	public boolean ping = true;
@@ -61,6 +76,13 @@ public final class Config {
 		if (c.zoomFactor < 1f) c.zoomFactor = 4f;
 		if (c.hud == null) c.hud = new HashMap<String, Layout>();
 		c.motionBlurLevel = Math.max(1, Math.min(3, c.motionBlurLevel));
+		if (c.hudSize == null) c.hudSize = new HashMap<String, Float>();
+		c.hudPlateOpacity = Math.max(0, Math.min(100, c.hudPlateOpacity));
+		c.coordinatesDecimals = Math.max(0, Math.min(2, c.coordinatesDecimals));
+		for (Map.Entry<String, Float> e : c.hudSize.entrySet()) {
+			Layout l = c.hud.get(e.getKey());
+			if (l != null) l.scale = e.getValue();
+		}
 		c.file = file;
 		c.save();
 		return c;

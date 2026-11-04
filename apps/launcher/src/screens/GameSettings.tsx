@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { t } from "../i18n";
 import { useLauncher } from "../launcher";
+import { useApp } from "../store";
 import { api, errorText, inTauri, type Settings } from "../lib/api";
 import {
   allPages,
@@ -14,20 +15,21 @@ import {
   type OptionValue,
 } from "../lib/gameOptions";
 import { useKeyCapture } from "../lib/useKeyCapture";
+import { clientPages, moduleOptions } from "../lib/clientOptions";
 import { Segmented, cx } from "../components/ui";
 import { useSettings } from "./Settings";
 
 type Options = Record<string, OptionValue>;
 type SetOption = (id: string, value: OptionValue | null) => void;
 type Edition = "all" | "1.8";
+type Kind = "game" | "client";
 
 /**
- * Game settings: options written into instances before they launch, under Minecraft's names, drawn
- * like Novex Client's in-game panel (SettingsPanel.java). All versions goes to every instance; 1.8
- * wins over it on versions before 1.9, and anything left alone there uses the All versions value.
- * Options never set keep each instance's own value.
+ * Settings shared by every instance: Minecraft's options, or Novex Client's. All versions goes to
+ * every instance; 1.8 wins over it on versions before 1.9, and anything left alone there uses the
+ * All versions value. Options never set keep each instance's own value.
  */
-export function GameSettingsScreen() {
+export function OptionTabs({ kind }: { kind: Kind }) {
   const [edition, setEdition] = useState<Edition>("all");
   return (
     <>
@@ -41,23 +43,46 @@ export function GameSettingsScreen() {
           ]}
         />
       </div>
-      <Panel key={edition} edition={edition} />
+      <Panel key={edition} kind={kind} edition={edition} />
     </>
   );
 }
 
-function Panel({ edition }: { edition: Edition }) {
+export function GameSettingsScreen() {
+  return <OptionTabs kind="game" />;
+}
+
+function Panel({ kind, edition }: { kind: Kind; edition: Edition }) {
   const { s, save, setS } = useSettings();
   const legacy = edition === "1.8";
-  const pages = legacy ? pages18 : allPages;
+  const game = kind === "game";
+  const pages = game ? (legacy ? pages18 : allPages) : clientPages(legacy);
   const binds = legacy ? keyBinds18 : keyBinds;
   const [section, setSection] = useState(pages[0].id);
+  /** The client module whose options are open, by id. */
+  const [open, setOpen] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const pending = useApp((a) => a.pendingSearch);
+
+  useEffect(() => {
+    if (pending?.target !== kind) return;
+    setQuery(pending.query);
+    useApp.getState().setPendingSearch(null);
+  }, [pending, kind]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
   if (!s) return <p className="py-10 text-center text-[13px] text-muted">{t("Available in the desktop app.")}</p>;
 
-  const field = legacy ? "gameOptionsLegacy" : "gameOptions";
+  const base = game ? "gameOptions" : "clientOptions";
+  const field = legacy ? (game ? "gameOptionsLegacy" : "clientOptionsLegacy") : base;
   const own: Options = s[field] ?? {};
-  const shared: Options = legacy ? (s.gameOptions ?? {}) : {};
+  const shared: Options = legacy ? (s[base] ?? {}) : {};
   const write = (next: Options) => save({ ...s, [field]: next });
   const set: SetOption = (id, value) => {
     const next = { ...own };
@@ -69,10 +94,20 @@ function Panel({ edition }: { edition: Edition }) {
   const value = (id: string) => own[id] ?? shown18(id, shared[id]);
 
   const page = pages.find((p) => p.id === section);
-  const ids = page ? page.options.map((o) => o.id) : binds.flatMap((c) => c.binds.map((b) => b.id));
+  const optionsOf = (o: GameOption) => (game ? [] : (moduleOptions[o.id] ?? []));
+  const ids = page
+    ? page.options.flatMap((o) => [o.id, ...optionsOf(o).map((x) => x.id)])
+    : binds.flatMap((c) => c.binds.map((b) => b.id));
+  const opened = page?.options.find((o) => o.id === open);
+  const q = query.trim().toLowerCase();
+  const found = q
+    ? pages
+        .flatMap((p) => p.options.flatMap((o) => [o, ...optionsOf(o)]))
+        .filter((o) => t(o.label).toLowerCase().includes(q) || o.label.toLowerCase().includes(q))
+    : [];
   const resetSection = () => write(Object.fromEntries(Object.entries(own).filter(([id]) => !ids.includes(id))));
   const nav = (id: string, label: string) => (
-    <button key={id} className={cx(section === id && "nvx-on")} onClick={() => setSection(id)}>
+    <button key={id} className={cx(section === id && "nvx-on")} onClick={() => { setSection(id); setOpen(null); }}>
       {label}
     </button>
   );
@@ -83,8 +118,16 @@ function Panel({ edition }: { edition: Edition }) {
         <span className="nvx-logo">N</span>
         <span className="font-semibold">Novex</span>
         <span className="nvx-version">{legacy ? "1.8" : t("All versions")}</span>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("Search settings")}
+          aria-label={t("Search settings")}
+          spellCheck={false}
+          className="nvx-search ml-auto"
+        />
         {section !== "template" && (
-          <button className="nvx-ghost ml-auto" onClick={resetSection}>
+          <button className="nvx-ghost" onClick={resetSection}>
             {t("Reset section")}
           </button>
         )}
@@ -92,24 +135,58 @@ function Panel({ edition }: { edition: Edition }) {
       <div className="flex min-h-[460px]">
         <nav className="nvx-side">
           {pages.map((p) => nav(p.id, t(p.title)))}
-          {nav("keys", t("Key Binds"))}
-          {!legacy && nav("template", t("Copy from Instance"))}
+          {game && nav("keys", t("Key Binds"))}
+          {game && !legacy && nav("template", t("Copy from Instance"))}
         </nav>
-        <main className="min-w-0 flex-1 p-4">
-          {section === "template" ? (
+        <main key={`${section}/${open}`} className="min-w-0 flex-1 p-4">
+          {q ? (
+            found.length ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {found.map((o) => (
+                  <Card key={o.id} option={o} value={value(o.id)} isSet={own[o.id] !== undefined} set={set} preview={preview} />
+                ))}
+              </div>
+            ) : (
+              <p className="nvx-note mt-0">{t("Nothing matches “{query}”.", { query })}</p>
+            )
+          ) : section === "template" ? (
             <Template s={s} setS={setS} />
+          ) : opened ? (
+            <>
+              <button className="nvx-ghost mb-3" onClick={() => setOpen(null)}>
+                ← {t(page!.title)}
+              </button>
+              <h3 className="mb-3 text-[15px] font-semibold">{t(opened.label)}</h3>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {[opened, ...optionsOf(opened)].map((o) => (
+                  <Card key={o.id} option={o} value={value(o.id)} isSet={own[o.id] !== undefined} set={set} preview={preview} />
+                ))}
+              </div>
+            </>
           ) : page ? (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {page.options.map((o) => (
-                <Card key={o.id} option={o} value={value(o.id)} isSet={own[o.id] !== undefined} set={set} preview={preview} />
+                <Card
+                  key={o.id}
+                  option={o}
+                  value={value(o.id)}
+                  isSet={own[o.id] !== undefined}
+                  set={set}
+                  preview={preview}
+                  onOpen={optionsOf(o).length ? () => setOpen(o.id) : undefined}
+                />
               ))}
             </div>
           ) : (
             <Keys binds={binds} own={own} shared={shared} set={set} />
           )}
-          {section !== "template" && (
+          {!q && section !== "template" && (
             <p className="nvx-note">
-              {legacy
+              {!game
+                ? legacy
+                  ? t("Used on 1.8 instances, over the All versions page. Anything you leave alone comes from there. Right-click to reset.")
+                  : t("Written into every instance with Novex Client before it launches. Options you haven't changed stay as each instance has them.")
+                : legacy
                 ? t("Used on 1.8 instances, over the All versions page. Anything you leave alone comes from there. Right-click to reset.")
                 : t("Written into every instance before it launches, so new ones play the same. Options you haven't changed stay as each instance has them. Sodium and other performance mods use these too.")}
             </p>
@@ -126,22 +203,33 @@ function Card({
   isSet,
   set,
   preview,
+  onOpen,
 }: {
   option: GameOption;
   value: OptionValue | undefined;
   isSet: boolean;
   set: SetOption;
   preview: (id: string, v: OptionValue) => void;
+  /** Opens the option's own page, for client modules that have one. */
+  onOpen?: () => void;
 }) {
   const reset = (e: React.MouseEvent) => {
     e.preventDefault();
     set(o.id, null);
   };
-  const head = (
-    <p className={cx("nvx-name", isSet && "nvx-set")}>
-      {o.label}
+  const name = (
+    <>
+      {t(o.label)}
       {o.since && <span className="nvx-since">{o.since}+</span>}
-    </p>
+    </>
+  );
+  const head = onOpen ? (
+    <button className={cx("nvx-name nvx-open w-full", isSet && "nvx-set")} onClick={onOpen}>
+      {name}
+      <span className="nvx-more">{t("Options")} ›</span>
+    </button>
+  ) : (
+    <p className={cx("nvx-name", isSet && "nvx-set")}>{name}</p>
   );
 
   if (o.kind === "toggle") {

@@ -166,8 +166,8 @@ export interface ClientStatus {
   enabled: boolean;
   /** Why Novex Client can't run on this instance, if it can't. */
   unsupported: string | null;
-  /** Contents of the instance's config/novex-client.json. */
-  modules: Record<string, boolean | number>;
+  /** Installed, but the launcher carries a different build. */
+  outdated: boolean;
 }
 
 export interface Settings {
@@ -178,6 +178,8 @@ export interface Settings {
   curseforgeApiKey: string | null;
   gameOptions: GameOptions;
   gameOptionsLegacy: GameOptions;
+  clientOptions: GameOptions;
+  clientOptionsLegacy: GameOptions;
   template: TemplateInfo | null;
 }
 
@@ -215,6 +217,7 @@ function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
 
 export const api = {
   accounts: () => call<AccountsView>("accounts_list"),
+  accountSkin: (name: string) => call<string | null>("account_skin", { name }),
   selectAccount: (uuid: string) => call<void>("account_select", { uuid }),
   removeAccount: (uuid: string) => call<void>("account_remove", { uuid }),
   addOffline: (name: string) => call<Account>("account_add_offline", { name }),
@@ -250,8 +253,7 @@ export const api = {
   clientStatus: (instanceId: string) => call<ClientStatus>("client_status", { instanceId }),
   clientSetEnabled: (instanceId: string, enabled: boolean) =>
     call<ClientStatus>("client_set_enabled", { instanceId, enabled }),
-  clientSetModule: (instanceId: string, key: string, value: boolean | number) =>
-    call<ClientStatus>("client_set_module", { instanceId, change: { key, value } }),
+  clientUpdate: (instanceId: string) => call<ClientStatus>("client_update", { instanceId }),
 
   contentSources: () => call<{ curseforge: boolean }>("content_sources"),
   search: (query: SearchQuery) => call<SearchPage>("content_search", { query }),

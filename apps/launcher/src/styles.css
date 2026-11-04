@@ -563,16 +563,16 @@
   }
 }
 
-/* The Game settings tab: Novex Client's in-game panel, with SettingsPanel.java's colours in
-   every launcher theme. */
+/* The shared settings panel (Game settings and Novex Client tabs), in the launcher's theme. */
 @layer components {
   .nvx-panel {
     overflow: hidden;
-    border: 1px solid rgb(255 255 255 / 0.15);
+    border: 1px solid rgb(var(--line) / var(--line-alpha));
     border-radius: 16px;
-    background: #0e1115;
-    color: #f2f4f5;
-    box-shadow: 0 14px 40px rgb(0 0 0 / 0.4);
+    /* No backdrop blur here: WebKit can leave switched pages unpainted under one. */
+    background: rgb(var(--surface) / 0.9);
+    color: rgb(var(--fg));
+    box-shadow: var(--shadow);
   }
   .nvx-head {
     display: flex;
@@ -580,8 +580,8 @@
     gap: 10px;
     height: 52px;
     padding: 0 14px;
-    background: #090b0e;
-    border-bottom: 1px solid rgb(255 255 255 / 0.12);
+    background: rgb(var(--fg) / 0.03);
+    border-bottom: 1px solid rgb(var(--line) / var(--line-alpha));
     font-size: 14px;
   }
   .nvx-logo {
@@ -590,28 +590,29 @@
     width: 26px;
     height: 26px;
     border-radius: 7px;
-    background: #6d4ae0;
+    background: rgb(var(--accent));
+    color: rgb(var(--accent-fg));
     font-weight: 700;
     font-size: 13px;
   }
   .nvx-version {
     padding: 2px 9px;
     border-radius: 7px;
-    background: #2a3036;
-    color: #c9ced3;
+    background: rgb(var(--fg) / 0.07);
+    color: rgb(var(--muted));
     font-size: 12px;
   }
   .nvx-ghost {
     padding: 5px 12px;
-    border: 1px solid rgb(255 255 255 / 0.2);
+    border: 1px solid rgb(var(--line) / calc(var(--line-alpha) * 2));
     border-radius: 9px;
-    background: #1a1e23;
-    color: #c9ced3;
+    background: transparent;
+    color: rgb(var(--muted));
     font-size: 12px;
     transition: background 140ms;
   }
   .nvx-ghost:hover {
-    background: #2a3036;
+    background: rgb(var(--fg) / 0.07);
   }
   .nvx-side {
     display: flex;
@@ -620,46 +621,73 @@
     gap: 6px;
     width: 176px;
     padding: 12px 10px;
-    border-right: 1px solid rgb(255 255 255 / 0.12);
+    border-right: 1px solid rgb(var(--line) / var(--line-alpha));
   }
   .nvx-side button {
     padding: 8px 10px;
     border-radius: 9px;
-    color: #c9ced3;
+    color: rgb(var(--muted));
     font-size: 13px;
     text-align: left;
     transition: background 140ms;
   }
   .nvx-side button:hover {
-    background: #2a3036;
+    background: rgb(var(--fg) / 0.07);
   }
   .nvx-side button.nvx-on {
-    background: #3c82f6;
-    color: #fff;
-    box-shadow: 0 4px 12px rgb(60 130 246 / 0.3);
+    background: rgb(var(--accent));
+    color: rgb(var(--accent-fg));
   }
   .nvx-card {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     overflow: hidden;
-    border: 1px solid rgb(255 255 255 / 0.15);
+    border: 1px solid rgb(var(--line) / var(--line-alpha));
     border-radius: 11px;
-    background: #1b2026;
-    box-shadow: 0 4px 10px rgb(0 0 0 / 0.25);
+    background: rgb(var(--raised));
     transition: background 140ms, transform 140ms;
   }
   .nvx-card:hover {
-    background: #252b33;
+    background: rgb(var(--fg) / 0.08);
     transform: translateY(-1px);
   }
   .nvx-name {
     position: relative;
     padding: 16px 12px;
-    color: #c9ced3;
+    color: rgb(var(--muted));
     font-size: 13px;
     font-weight: 500;
     text-align: center;
+  }
+  .nvx-search {
+    width: 200px;
+    padding: 5px 12px;
+    border: 1px solid rgb(var(--line) / calc(var(--line-alpha) * 2));
+    border-radius: 9px;
+    background: transparent;
+    color: rgb(var(--fg));
+    font-size: 12px;
+    outline: none;
+  }
+  .nvx-search:focus {
+    border-color: rgb(var(--accent));
+  }
+  .nvx-search::placeholder {
+    color: rgb(var(--muted));
+  }
+  .nvx-open:hover {
+    color: rgb(var(--fg));
+  }
+  .nvx-more {
+    display: block;
+    margin-top: 4px;
+    color: rgb(var(--muted));
+    font-size: 11px;
+    font-weight: 400;
+  }
+  .nvx-open:hover .nvx-more {
+    color: rgb(var(--accent));
   }
   .nvx-set::after {
     content: "";
@@ -669,39 +697,41 @@
     width: 7px;
     height: 7px;
     border-radius: 99px;
-    background: #3c82f6;
+    background: rgb(var(--accent));
   }
   .nvx-state {
     width: 100%;
     padding: 6px;
-    color: #f2f4f5;
+    color: rgb(var(--fg));
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.14em;
     transition: background 140ms;
   }
   .nvx-enabled {
-    background: #2baa5a;
+    background: rgb(var(--success));
+    color: rgb(var(--surface));
   }
   .nvx-enabled:hover {
-    background: #33c267;
+    filter: brightness(1.08);
   }
   .nvx-disabled {
-    background: #c0264a;
+    background: rgb(var(--danger));
+    color: rgb(var(--surface));
   }
   .nvx-disabled:hover {
-    background: #d83258;
+    filter: brightness(1.08);
   }
   .nvx-cycle {
-    background: #353b42;
+    background: rgb(var(--fg) / 0.1);
     letter-spacing: 0.04em;
   }
   .nvx-cycle:hover {
-    background: #434a52;
+    background: rgb(var(--fg) / 0.16);
   }
   .nvx-range {
     padding: 0 12px 12px;
-    color: #8a939c;
+    color: rgb(var(--muted));
     font-size: 12px;
     text-align: center;
   }
@@ -712,29 +742,29 @@
     margin-top: 8px;
     border-radius: 99px;
     appearance: none;
-    background: linear-gradient(90deg, #3c82f6 var(--at), #15191d var(--at));
+    background: linear-gradient(90deg, rgb(var(--accent)) var(--at), rgb(var(--fg) / 0.12) var(--at));
   }
   .nvx-range input::-webkit-slider-thumb {
     width: 14px;
     height: 14px;
     border-radius: 99px;
     appearance: none;
-    background: #f2f4f5;
-    box-shadow: 0 1px 4px rgb(0 0 0 / 0.5);
+    background: #fff;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
   }
   .nvx-since {
     margin-left: 6px;
-    color: #7f8891;
+    color: rgb(var(--muted));
     font-size: 11px;
   }
   .nvx-note {
     margin-top: 14px;
-    color: #7f8891;
+    color: rgb(var(--muted));
     font-size: 12px;
   }
   .nvx-group {
     margin-bottom: 8px;
-    color: #7f8891;
+    color: rgb(var(--muted));
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.14em;
@@ -748,7 +778,7 @@
     margin-bottom: 6px;
     padding: 6px 8px 6px 12px;
     border-radius: 9px;
-    background: #181c21;
+    background: rgb(var(--raised));
     font-size: 13px;
   }
   .nvx-bind {
@@ -762,22 +792,23 @@
   .nvx-key {
     min-width: 120px;
     padding: 5px 10px;
-    border: 1px solid rgb(255 255 255 / 0.2);
+    border: 1px solid rgb(var(--line) / calc(var(--line-alpha) * 2));
     border-radius: 8px;
-    background: #15191d;
-    color: #f2f4f5;
+    background: rgb(var(--surface));
+    color: rgb(var(--fg));
     font-size: 12px;
     transition: background 140ms;
   }
   .nvx-key:hover {
-    background: #2a3036;
+    background: rgb(var(--fg) / 0.07);
   }
   .nvx-key.nvx-on {
-    border-color: #3c82f6;
-    background: #3c82f6;
+    border-color: rgb(var(--accent));
+    background: rgb(var(--accent));
+    color: rgb(var(--accent-fg));
   }
   .nvx-key.nvx-clash {
-    border-color: #d83258;
-    color: #ff8fa6;
+    border-color: rgb(var(--danger));
+    color: rgb(var(--danger));
   }
 }

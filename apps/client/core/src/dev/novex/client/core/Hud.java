@@ -10,7 +10,6 @@ import java.util.List;
 public final class Hud {
 	static final int TEXT = 0xFFF2F4F5;
 	static final int DIM = 0xFFA9B2BA;
-	static final int PLATE = 0x66000000;
 	static final int KEY_DOWN = 0xCCF2F4F5;
 	static final int ACCENT = 0xFF76BA7C;
 	static final int LOW = 0xFFF0766A;
@@ -69,7 +68,8 @@ public final class Hud {
 		Layout l = NovexCore.config.hud.get(e.id);
 		if (l != null) return l;
 		float[] spot = e.defaultSpot(g, game);
-		return new Layout(spot[0] / g.width(), spot[1] / g.height(), 1f);
+		Float size = NovexCore.config.hudSize.get(e.id);
+		return new Layout(spot[0] / g.width(), spot[1] / g.height(), size == null ? 1f : size);
 	}
 
 	/** Pixel box of an element on screen: x, y, width, height, kept inside the screen. */
@@ -111,9 +111,21 @@ public final class Hud {
 		g.text(s, (g.width() - g.textWidth(s)) / 2, g.height() / 2 + 24, left <= 3 ? LOW : TEXT, true);
 	}
 
+	private static int textColor() {
+		return 0xFF000000 | NovexCore.config.hudTextColor;
+	}
+
+	private static int plateColor() {
+		return Math.round(NovexCore.config.hudPlateOpacity * 2.55f) << 24;
+	}
+
+	private static boolean shadow() {
+		return NovexCore.config.hudShadow;
+	}
+
 	static void plate(Gfx g, String text, int y) {
-		Shapes.round(g, 0, y, 4 + g.textWidth(text), y + g.lineHeight() + 2, 3, PLATE);
-		g.text(text, 2, y + 2, TEXT, false);
+		if (NovexCore.config.hudPlates) Shapes.plate(g, 0, y, 4 + g.textWidth(text), y + g.lineHeight() + 2, plateColor());
+		g.text(text, 2, y + 2, textColor(), shadow());
 	}
 
 	/** A single line of text on a plate; the default spots stack down the top-left corner. */
@@ -152,25 +164,31 @@ public final class Hud {
 		}
 
 		private String[] lines(Game game) {
-			if (!game.active()) return new String[] {"128, 64, -256", "Facing north"};
-			return new String[] {
-				String.format("%.0f, %.0f, %.0f", game.x(), game.y(), game.z()), "Facing " + game.facing()
-			};
+			Config c = NovexCore.config;
+			String f = "%." + c.coordinatesDecimals + "f";
+			String at = game.active()
+					? String.format(java.util.Locale.ROOT, f + ", " + f + ", " + f, game.x(), game.y(), game.z())
+					: "128, 64, -256";
+			if (!c.coordinatesFacing) return new String[] {at};
+			return new String[] {at, "Facing " + (game.active() ? game.facing() : "north")};
 		}
 
 		int width(Gfx g, Game game, boolean preview) {
-			String[] l = lines(game);
-			return 4 + Math.max(g.textWidth(l[0]), g.textWidth(l[1]));
+			int w = 0;
+			for (String l : lines(game)) w = Math.max(w, g.textWidth(l));
+			return 4 + w;
 		}
 
 		int height(Gfx g, Game game, boolean preview) {
-			return 2 * (g.lineHeight() + 2) + 2;
+			return lines(game).length * (g.lineHeight() + 2) + 2;
 		}
 
 		void draw(Gfx g, Game game, boolean preview) {
-			String[] l = lines(game);
-			plate(g, l[0], 0);
-			plate(g, l[1], g.lineHeight() + 4);
+			int y = 0;
+			for (String l : lines(game)) {
+				plate(g, l, y);
+				y += g.lineHeight() + 4;
+			}
 		}
 
 		float[] defaultSpot(Gfx g, Game game) {
@@ -190,7 +208,8 @@ public final class Hud {
 		}
 
 		int height(Gfx g, Game game, boolean preview) {
-			return 3 * (S + GAP) + 12;
+			Config c = NovexCore.config;
+			return 2 * S + GAP + (c.keystrokesMouse ? S + GAP : 0) + (c.keystrokesJump ? 12 + GAP : 0);
 		}
 
 		void draw(Gfx g, Game game, boolean preview) {
@@ -199,11 +218,15 @@ public final class Hud {
 			key(g, live && game.down(Game.Key.LEFT), "A", 0, S + GAP, S, S);
 			key(g, live && game.down(Game.Key.DOWN), "S", S + GAP, S + GAP, S, S);
 			key(g, live && game.down(Game.Key.RIGHT), "D", 2 * (S + GAP), S + GAP, S, S);
+			Config c = NovexCore.config;
 			int row = 2 * (S + GAP);
-			int half = (3 * S + GAP) / 2;
-			key(g, live && game.down(Game.Key.ATTACK), String.valueOf(Clicks.left()), 0, row, half, S);
-			key(g, live && game.down(Game.Key.USE), String.valueOf(Clicks.right()), half + GAP, row, half, S);
-			key(g, live && game.down(Game.Key.JUMP), "Jump", 0, row + S + GAP, 3 * S + 2 * GAP, 12);
+			if (c.keystrokesMouse) {
+				int half = (3 * S + GAP) / 2;
+				key(g, live && game.down(Game.Key.ATTACK), String.valueOf(Clicks.left()), 0, row, half, S);
+				key(g, live && game.down(Game.Key.USE), String.valueOf(Clicks.right()), half + GAP, row, half, S);
+				row += S + GAP;
+			}
+			if (c.keystrokesJump) key(g, live && game.down(Game.Key.JUMP), "Jump", 0, row, 3 * S + 2 * GAP, 12);
 		}
 
 		float[] defaultSpot(Gfx g, Game game) {
@@ -211,9 +234,9 @@ public final class Hud {
 		}
 
 		private static void key(Gfx g, boolean down, String label, int x, int y, int w, int h) {
-			Shapes.round(g, x, y, x + w, y + h, 4, down ? KEY_DOWN : PLATE);
-			int color = down ? 0xFF15181B : TEXT;
-			g.text(label, x + (w - g.textWidth(label)) / 2, y + (h - g.lineHeight()) / 2 + 1, color, false);
+			if (down || NovexCore.config.hudPlates) Shapes.plate(g, x, y, x + w, y + h, down ? KEY_DOWN : plateColor());
+			int color = down ? 0xFF15181B : textColor();
+			g.text(label, x + (w - g.textWidth(label)) / 2, y + (h - g.lineHeight()) / 2 + 1, color, !down && shadow());
 		}
 	}
 
@@ -246,8 +269,8 @@ public final class Hud {
 			int y = 0;
 			for (Game.Piece p : pieces(game, preview)) {
 				if (p.stack != null) g.item(p.stack, W - 16, y);
-				else Shapes.round(g, W - 15, y + 1, W - 1, y + 15, 3, PLATE);
-				g.text(p.text, W - 20 - g.textWidth(p.text), y + 4, p.low ? LOW : TEXT, true);
+				else Shapes.plate(g, W - 15, y + 1, W - 1, y + 15, plateColor());
+				g.text(p.text, W - 20 - g.textWidth(p.text), y + 4, p.low ? LOW : textColor(), true);
 				y += ROW;
 			}
 		}
@@ -284,7 +307,7 @@ public final class Hud {
 			for (Game.Effect e : list(game, preview)) {
 				String name = e.amplifier > 0 ? e.name + " " + (e.amplifier + 1) : e.name;
 				String time = e.infinite ? "\u221e" : formatTicks(e.ticks);
-				g.text(name, W - g.textWidth(name), y, TEXT, true);
+				g.text(name, W - g.textWidth(name), y, textColor(), true);
 				g.text(time, W - g.textWidth(time), y + lh + 1, DIM, true);
 				y += 2 * lh + 5;
 			}

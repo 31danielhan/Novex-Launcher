@@ -11,6 +11,38 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
  * the HUD editor (dragging an element), the settings from the editor, and motion blur.
  */
 public class HudGameTest implements FabricClientGameTest {
+	/** A solid skin the launcher would have downloaded for an offline account. */
+	private static void writeSkin() {
+		try {
+			java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(64, 64, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+			for (int x = 0; x < 64; x++) for (int y = 0; y < 64; y++) image.setRGB(x, y, 0xFFFF00FF);
+			java.nio.file.Path config = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir();
+			javax.imageio.ImageIO.write(image, "png", config.resolve("novex-skin.png").toFile());
+			java.nio.file.Files.writeString(config.resolve("novex-skin.txt"), "Test\nslim\n");
+		} catch (java.io.IOException e) {
+			throw new AssertionError(e);
+		}
+	}
+
+	private static void checkSkin(ClientGameTestContext ctx) {
+		check(ctx.computeOnClient(mc -> {
+			var skin = mc.player.getSkin();
+			return skin.texture().getPath().equals("offline_skin")
+					&& skin.model() == net.minecraft.client.resources.PlayerSkin.Model.SLIM;
+		}), "The offline skin wasn't applied");
+		ctx.runOnClient(mc -> mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_FRONT));
+		ctx.waitTicks(5);
+		ctx.takeScreenshot("novex-offline-skin");
+		ctx.runOnClient(mc -> mc.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON));
+		try {
+			java.nio.file.Path config = net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir();
+			java.nio.file.Files.deleteIfExists(config.resolve("novex-skin.png"));
+			java.nio.file.Files.deleteIfExists(config.resolve("novex-skin.txt"));
+		} catch (java.io.IOException e) {
+			throw new AssertionError(e);
+		}
+	}
+
 	@Override
 	public void runTest(ClientGameTestContext ctx) {
 		// Title screen: the Novex Client button opens the settings. Buttons ignore clicks while the
@@ -38,8 +70,10 @@ public class HudGameTest implements FabricClientGameTest {
 		check(ctx.computeOnClient(mc -> mc.screen instanceof net.minecraft.client.gui.screens.TitleScreen),
 				"Right Shift didn't close back to the title screen");
 
+		writeSkin();
 		try (TestSingleplayerContext world = ctx.worldBuilder().create()) {
 			world.getClientWorld().waitForChunksRender();
+			checkSkin(ctx);
 			ctx.getInput().holdKey(o -> o.keyUp);
 			ctx.waitTicks(10);
 			ctx.takeScreenshot("novex-hud");

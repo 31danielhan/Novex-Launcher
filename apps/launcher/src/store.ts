@@ -16,6 +16,8 @@ export type Palette =
   | "pcl"
   | "prism";
 
+export type SearchTarget = "game" | "client" | "browse";
+
 const flat: Palette[] = ["pcl", "prism"];
 
 export const palettes: { value: Palette; label: string; swatch: string }[] = [
@@ -74,6 +76,9 @@ interface AppState {
   theme: ThemePref;
   palette: Palette;
   language: LanguagePref;
+  /** A search handed over by the top bar, for the screen that shows it to pick up. */
+  pendingSearch: { target: SearchTarget; query: string } | null;
+  setPendingSearch: (p: { target: SearchTarget; query: string } | null) => void;
   setScreen: (s: Screen) => void;
   setLanguage: (l: LanguagePref) => void;
   setTheme: (t: ThemePref) => void;
@@ -89,6 +94,8 @@ export const useApp = create<AppState>((set) => ({
     "classic",
   ),
   language: read<LanguagePref>(LANGUAGE_KEY, ["system", ...languages.map((l) => l.value)], "system"),
+  pendingSearch: null,
+  setPendingSearch: (pendingSearch) => set({ pendingSearch }),
   setScreen: (screen) => set({ screen }),
   setLanguage: (language) => {
     write(LANGUAGE_KEY, language);

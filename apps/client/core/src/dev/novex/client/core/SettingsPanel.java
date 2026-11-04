@@ -248,7 +248,7 @@ final class SettingsPanel {
 		final Config c = NovexCore.config;
 		boolean on = m.get(c);
 		float f = fade("card" + m, hot(mx, my, x, y, w, CARD_H), dt);
-		Shapes.shadow(g, x, y, x + w, y + CARD_H, 8, 4, alpha(0x50000000, 0.5f + 0.5f * f));
+		if (f > 0.02f) Shapes.shadow(g, x, y, x + w, y + CARD_H, 8, 4, alpha(0x50000000, f));
 		Shapes.round(g, x, y, x + w, y + CARD_H, 8, mix(CARD, CARD_HOT, f));
 
 		// Icon, drawn at 2x and lifted a little on hover.

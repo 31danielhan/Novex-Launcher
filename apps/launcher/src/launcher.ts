@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 import { useApp } from "./store";
 import { create } from "zustand";
 import { listen } from "@tauri-apps/api/event";
@@ -21,7 +22,15 @@ export type Available =
   | { kind: "app"; update: AppUpdate }
   | { kind: "ui"; version: string };
 
+/** An update worth telling the player about. `instance` opens that instance's page. */
+export interface Alert {
+  key: string;
+  text: string;
+  action?: { label: string; run: "update" } | { label: string; instance: string };
+}
+
 const MAX_LOG_LINES = 5000;
+const SEEN_VERSION_KEY = "novex.seenVersion";
 const SELECTED_KEY = "novex.selectedInstance";
 
 function readSelected(): string | null {
@@ -41,6 +50,9 @@ interface LauncherState {
   status: Record<string, Status>;
   logs: Record<string, string[]>;
   error: string | null;
+  alerts: Alert[];
+  dismissAlert: (key: string) => void;
+  checkContentUpdates: () => Promise<void>;
   /** Success messages, shown like errors but not in red. */
   notice: string | null;
   /** The modpack being installed, if any. */
@@ -86,6 +98,32 @@ export const useLauncher = create<LauncherState>((set, get) => ({
   status: {},
   logs: {},
   error: null,
+  alerts: [],
+  dismissAlert: (key) => {
+    dismissed.add(key);
+    set((s) => ({ alerts: s.alerts.filter((a) => a.key !== key) }));
+  },
+  checkContentUpdates: async () => {
+    for (const inst of get().instances) {
+      const [content, client] = await Promise.all([
+        api.contentUpdates(inst.id).catch(() => []),
+        api.clientStatus(inst.id).catch(() => null),
+      ]);
+      const count = content.length + (client?.outdated ? 1 : 0);
+      // Keyed by what's new, so a dismissed alert returns only when more updates appear.
+      const key = `content/${inst.id}/${content.map((u) => u.versionId).sort().join()}/${!!client?.outdated}`;
+      const text = t(count === 1 ? "1 update for {name}." : "{count} updates for {name}.", { count, name: inst.name });
+      set((s) => {
+        const others = s.alerts.filter((a) => !a.key.startsWith(`content/${inst.id}/`));
+        return {
+          alerts:
+            count && !dismissed.has(key)
+              ? [...others, { key, text, action: { label: t("View"), instance: inst.id } }]
+              : others,
+        };
+      });
+    }
+  },
   notice: null,
   pack: null,
   selected: readSelected(),
@@ -189,13 +227,17 @@ export const useLauncher = create<LauncherState>((set, get) => ({
     try {
       // A new app release beats an interface-only update.
       const app = await api.checkAppUpdate();
-      if (app) return set({ available: { kind: "app", update: app } });
+      if (app) {
+        set({ available: { kind: "app", update: app } });
+        return notifyUpdate(t("Novex {version} is available.", { version: app.version }), `app/${app.version}`);
+      }
       const ui = await api.checkUiUpdate().catch((e) => {
         // A missing interface channel is normal; only report it when asked.
         if (manual) throw e;
         return null;
       });
       set({ available: ui ? { kind: "ui", version: ui.version } : null });
+      if (ui) notifyUpdate(t("A new interface ({version}) is available.", { version: ui.version }), `ui/${ui.version}`);
       if (manual && !ui) set({ notice: "Novex is up to date." });
     } catch (e) {
       if (manual) set({ error: errorText(e) });
@@ -238,6 +280,31 @@ export const useLauncher = create<LauncherState>((set, get) => ({
 }));
 
 const UPDATE_CHECK_MS = 6 * 60 * 60 * 1000;
+const dismissed = new Set<string>();
+
+function notifyUpdate(text: string, key: string) {
+  if (dismissed.has(key)) return;
+  useLauncher.setState((s) => ({
+    alerts: [
+      ...s.alerts.filter((a) => a.key.startsWith("content/")),
+      { key, text, action: { label: t("Update"), run: "update" } },
+    ],
+  }));
+}
+
+/** Says so once after the launcher or its interface changed version. */
+async function announceUpdated() {
+  const info = await api.updateInfo().catch(() => null);
+  if (!info) return;
+  const version = info.uiVersion ?? info.appVersion;
+  try {
+    const seen = localStorage.getItem(SEEN_VERSION_KEY);
+    localStorage.setItem(SEEN_VERSION_KEY, version);
+    if (seen && seen !== version) useLauncher.setState({ notice: t("Novex updated to {version}.", { version }) });
+  } catch {
+    // Storage can be unavailable; the message just doesn't show.
+  }
+}
 
 /** Installs any update when the launcher opens, unless a game is already running. */
 async function installAtStartup() {
@@ -323,9 +390,14 @@ export async function initLauncher() {
   }));
 
   const settings = await api.settings().catch(() => null);
-  if (settings?.autoUpdate) {
-    void installAtStartup();
-    // For a launcher left open: this only shows the update button, so it never restarts mid-use.
-    setInterval(() => void useLauncher.getState().checkForUpdates(), UPDATE_CHECK_MS);
-  }
+  void announceUpdated();
+  const { checkForUpdates, checkContentUpdates } = useLauncher.getState();
+  if (settings?.autoUpdate) void installAtStartup();
+  else void checkForUpdates();
+  void checkContentUpdates();
+  // For a launcher left open: this only notifies, so it never restarts mid-use.
+  setInterval(() => {
+    void checkForUpdates();
+    void checkContentUpdates();
+  }, UPDATE_CHECK_MS);
 }

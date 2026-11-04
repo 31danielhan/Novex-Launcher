@@ -15,6 +15,7 @@ public final class NovexCore {
 
 	public static void init(Path configDir) {
 		config = Config.load(configDir.resolve("novex-client.json"));
+		OfflineSkin.init(configDir);
 	}
 
 	/** Set by the adapter to push settings into the game (toggle sprint) after they change. */
