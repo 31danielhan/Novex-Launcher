@@ -1,0 +1,10 @@
+[
+	{
+		"modid": "novex_client",
+		"name": "Novex Client",
+		"description": "HUD and quality-of-life modules for Novex Launcher. Information only: no reach, hitbox, auto-click or ESP.",
+		"version": "${version}",
+		"mcversion": "1.8.9",
+		"authorList": ["Novex"]
+	}
+]

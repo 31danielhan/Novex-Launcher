@@ -2,6 +2,7 @@
 
 pub mod files;
 pub mod logs;
+pub mod stats;
 pub mod version;
 
 use std::collections::HashMap;
@@ -332,6 +333,18 @@ async fn start(app: &AppHandle, state: &AppState, id: &str) -> Result<()> {
     };
     let plan = prepare(&state.http, &state.paths, &settings, &target, &creds, emit).await?;
 
+    // Bring Novex Client up to date with the build this launcher carries.
+    crate::client::sync(&state.paths, &inst)?;
+    {
+        let global = state.settings.lock().await;
+        crate::game_options::apply(
+            &state.paths,
+            &inst,
+            &global.game_options,
+            &global.game_options_legacy,
+            global.template.as_ref(),
+        )?;
+    }
     emit("Starting", 0, 0);
     let mut child = command(&plan, &game_dir).spawn().map_err(|e| {
         msg(format!(
@@ -339,6 +352,17 @@ async fn start(app: &AppHandle, state: &AppState, id: &str) -> Result<()> {
             plan.java.display()
         ))
     })?;
+
+    if let Some(pid) = child.id() {
+        state.monitor.start(
+            id,
+            stats::Session {
+                pid,
+                started_at: now_secs(),
+                max_memory_mb: settings.max_memory_mb,
+            },
+        );
+    }
 
     inst.last_played = Some(now_secs());
     instances::save(&state.paths, &inst)?;
@@ -370,6 +394,7 @@ async fn start(app: &AppHandle, state: &AppState, id: &str) -> Result<()> {
         };
         let state = app.state::<AppState>();
         state.running.lock().await.remove(&id);
+        state.monitor.end(&id);
         if let Ok(mut inst) = instances::load(&state.paths, &id) {
             inst.play_time_secs += started.elapsed().as_secs();
             let _ = instances::save(&state.paths, &inst);

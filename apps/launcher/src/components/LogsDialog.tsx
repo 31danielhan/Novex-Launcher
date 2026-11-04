@@ -4,7 +4,7 @@ import { useLauncher } from "../launcher";
 import { Dialog } from "./Dialog";
 import { Button } from "./ui";
 
-function lineClass(l: string) {
+export function lineClass(l: string) {
   if (/\/(ERROR|FATAL)\]|Exception|^\s+at /.test(l)) return "text-danger";
   if (/\/WARN\]/.test(l)) return "text-[#e0b252]";
   return "";

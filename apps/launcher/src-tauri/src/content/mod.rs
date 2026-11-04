@@ -414,11 +414,13 @@ pub async fn install(
         })?;
         let path = content_path(paths, &inst.id, kind, &version.file.filename)?;
 
-        // Updating: remove the previous file of this project.
+        // Updating: remove the previous file of this project, keeping it disabled if it was.
+        let mut was_disabled = false;
         for old in manifest.items.iter().filter(|t| {
             t.source == source && t.project_id == project && t.file != version.file.filename
         }) {
             if let Ok(p) = content_path(paths, &inst.id, old.kind, &old.file) {
+                was_disabled |= with_disabled(&p).exists();
                 let _ = std::fs::remove_file(with_disabled(&p));
                 let _ = std::fs::remove_file(p);
             }
@@ -434,6 +436,9 @@ pub async fn install(
             |_, _| {},
         )
         .await?;
+        if was_disabled {
+            set_enabled(paths, &inst.id, kind, &version.file.filename, false)?;
+        }
         manifest.upsert(Tracked {
             kind,
             file: version.file.filename.clone(),
@@ -453,6 +458,62 @@ pub async fn install(
         }
     }
     Ok(installed)
+}
+
+/// A newer version of something installed from Modrinth or CurseForge.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentUpdate {
+    pub kind: ContentKind,
+    /// The installed file, as in [`InstalledItem::file`].
+    pub file: String,
+    pub source: Source,
+    pub project_id: String,
+    pub version_id: String,
+    pub version: String,
+}
+
+/// Only offers versions newer than the installed one: a beta that is ahead of the latest
+/// release isn't "updated" back to the release.
+fn newer(list: &[ContentVersion], installed_id: &str) -> Option<ContentVersion> {
+    let current = list.iter().position(|v| v.id == installed_id)?;
+    let best = pick(list)?;
+    let best_at = list.iter().position(|v| v.id == best.id)?;
+    (best_at < current).then(|| best.clone())
+}
+
+pub async fn check_updates(
+    http: &Client,
+    paths: &Paths,
+    inst: &Instance,
+) -> Result<Vec<ContentUpdate>> {
+    use futures_util::stream::{self, StreamExt};
+
+    let target = Target::of(inst);
+    let items = Manifest::load(paths, &inst.id).items;
+    let found: Vec<Option<ContentUpdate>> = stream::iter(items)
+        .map(|t| {
+            let target = &target;
+            async move {
+                // One project failing (deleted, rate limited) shouldn't hide the others.
+                let list = versions(http, t.source, &t.project_id, t.kind, Some(target))
+                    .await
+                    .ok()?;
+                let v = newer(&list, &t.version_id)?;
+                Some(ContentUpdate {
+                    kind: t.kind,
+                    file: t.file,
+                    source: t.source,
+                    project_id: t.project_id,
+                    version_id: v.id,
+                    version: v.version_number,
+                })
+            }
+        })
+        .buffer_unordered(8)
+        .collect()
+        .await;
+    Ok(found.into_iter().flatten().collect())
 }
 
 async fn project_info_or_id(http: &Client, source: Source, id: &str) -> ProjectInfo {
@@ -520,6 +581,15 @@ pub async fn content_install(
         version_id.as_deref(),
     )
     .await
+}
+
+#[tauri::command]
+pub async fn content_updates(
+    state: State<'_, AppState>,
+    instance_id: String,
+) -> Result<Vec<ContentUpdate>> {
+    let inst = instances::load(&state.paths, &instance_id)?;
+    check_updates(&state.http, &state.paths, &inst).await
 }
 
 #[tauri::command]
@@ -620,6 +690,35 @@ mod tests {
         for bad in ["", "../x.jar", "a/b.jar", "a\\b.jar", ".hidden"] {
             assert!(safe_file_name(bad).is_err(), "{bad}");
         }
+    }
+
+    #[test]
+    fn updates_only_move_forward() {
+        let v = |id: &str, channel: &str| ContentVersion {
+            id: id.into(),
+            name: id.into(),
+            version_number: id.into(),
+            game_versions: vec![],
+            loaders: vec![],
+            published: String::new(),
+            channel: channel.into(),
+            file: ContentFile {
+                url: None,
+                filename: format!("{id}.jar"),
+                sha1: None,
+                size: None,
+            },
+            dependencies: vec![],
+        };
+        // Newest first, as the sources return them.
+        let list = [v("3b", "beta"), v("2", "release"), v("1", "release")];
+        assert_eq!(newer(&list, "1").map(|v| v.id), Some("2".into()));
+        assert!(newer(&list, "2").is_none(), "already on the newest release");
+        assert!(
+            newer(&list, "3b").is_none(),
+            "a newer beta isn't downgraded"
+        );
+        assert!(newer(&list, "gone").is_none(), "unknown installed version");
     }
 
     #[test]

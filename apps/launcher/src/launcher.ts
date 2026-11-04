@@ -1,3 +1,4 @@
+import { useApp } from "./store";
 import { create } from "zustand";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -21,6 +22,15 @@ export type Available =
   | { kind: "ui"; version: string };
 
 const MAX_LOG_LINES = 5000;
+const SELECTED_KEY = "novex.selectedInstance";
+
+function readSelected(): string | null {
+  try {
+    return localStorage.getItem(SELECTED_KEY);
+  } catch {
+    return null;
+  }
+}
 const IDLE: Status = { state: "idle" };
 
 interface LauncherState {
@@ -35,8 +45,11 @@ interface LauncherState {
   notice: string | null;
   /** The modpack being installed, if any. */
   pack: PackProgress | null;
+  /** Instance shown on Home; may name a deleted instance, so read it via `selectedInstance`. */
+  selected: string | null;
   /** Instance that Browse installs into. */
   browseTarget: string | null;
+  /** Instance whose page is open on the Instances screen. */
   contentFor: string | null;
   available: Available | null;
   /** Bytes downloaded while an update installs; `null` when idle. */
@@ -57,6 +70,7 @@ interface LauncherState {
   setError: (e: string | null) => void;
   setNotice: (n: string | null) => void;
   setBrowseTarget: (id: string | null) => void;
+  select: (id: string) => void;
   openContent: (id: string | null) => void;
   openAccounts: (open: boolean) => void;
   openNewInstance: (open: boolean) => void;
@@ -74,6 +88,7 @@ export const useLauncher = create<LauncherState>((set, get) => ({
   error: null,
   notice: null,
   pack: null,
+  selected: readSelected(),
   browseTarget: null,
   contentFor: null,
   available: null,
@@ -110,7 +125,10 @@ export const useLauncher = create<LauncherState>((set, get) => ({
     set((s) => ({
       status: { ...s.status, [id]: { state: "launching", stage: "Starting", done: 0, total: 0 } },
       logs: { ...s.logs, [id]: [] },
+      // Show the instance's live page while it starts.
+      contentFor: id,
     }));
+    useApp.getState().setScreen("instances");
     try {
       await api.launch(id);
       set((s) => ({ status: { ...s.status, [id]: { state: "running" } } }));
@@ -204,6 +222,14 @@ export const useLauncher = create<LauncherState>((set, get) => ({
   setError: (error) => set({ error }),
   setNotice: (notice) => set({ notice }),
   setBrowseTarget: (browseTarget) => set({ browseTarget }),
+  select: (selected) => {
+    try {
+      localStorage.setItem(SELECTED_KEY, selected);
+    } catch {
+      // Non-fatal: Home just falls back to the last played instance.
+    }
+    set({ selected });
+  },
   openContent: (contentFor) => set({ contentFor }),
   openAccounts: (accountsOpen) => set({ accountsOpen }),
   openNewInstance: (newInstanceOpen) => set({ newInstanceOpen }),
@@ -218,6 +244,10 @@ function finishPack({ instance, skipped }: { instance: Instance; skipped: string
       : `${instance.name} is installed and ready to play.`,
   });
 }
+
+/** The instance Home shows: the chosen one, else the most recently played. */
+export const selectedInstance = (s: Pick<LauncherState, "instances" | "selected">): Instance | undefined =>
+  s.instances.find((i) => i.id === s.selected) ?? s.instances[0];
 
 export const statusOf = (s: Record<string, Status>, id: string): Status => s[id] ?? IDLE;
 

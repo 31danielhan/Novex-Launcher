@@ -1,0 +1,14 @@
+{
+    "targets": [ "swap" ],
+    "passes": [
+        {
+            "name": "novex_motion_blur",
+            "intarget": "minecraft:main",
+            "outtarget": "swap",
+            "auxtargets": [
+                { "name": "MotionSampler", "id": "novex_motion", "width": 10, "height": 1, "bilinear": false }
+            ]
+        },
+        { "name": "blit", "intarget": "swap", "outtarget": "minecraft:main" }
+    ]
+}

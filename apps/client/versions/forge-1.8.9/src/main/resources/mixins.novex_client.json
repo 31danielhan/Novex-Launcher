@@ -1,0 +1,7 @@
+{
+	"package": "dev.novex.client.mixin",
+	"refmap": "mixins.novex_client.refmap.json",
+	"minVersion": "0.7",
+	"compatibilityLevel": "JAVA_8",
+	"client": ["ItemRendererMixin", "EntityRendererMixin", "GuiIngameMixin"]
+}

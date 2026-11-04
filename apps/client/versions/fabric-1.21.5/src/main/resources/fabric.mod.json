@@ -1,0 +1,21 @@
+{
+	"schemaVersion": 1,
+	"id": "novex-client",
+	"version": "${version}",
+	"name": "Novex Client",
+	"description": "HUD and quality-of-life modules for Novex Launcher. Information only: no reach, hitbox, auto-click or ESP.",
+	"authors": ["Novex"],
+	"license": "All-Rights-Reserved",
+	"icon": "assets/novex-client/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": ["dev.novex.client.NovexClient"]
+	},
+	"mixins": ["novex-client.mixins.json"],
+	"depends": {
+		"fabricloader": ">=0.20.1",
+		"minecraft": "1.21.5",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

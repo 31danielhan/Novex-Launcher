@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Compass, Download, ExternalLink, Loader2, Search } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -15,7 +16,7 @@ import {
 } from "../lib/api";
 import { useLauncher } from "../launcher";
 import { Dialog, inputClass } from "../components/Dialog";
-import { ProjectIcon } from "../components/ContentDialog";
+import { ProjectIcon } from "../components/InstancePage";
 import { Badge, Button, EmptyState, PageHeader, Segmented, cx } from "../components/ui";
 
 const kinds: { value: ContentKind; label: string }[] = [
@@ -148,7 +149,7 @@ function ProjectDialog({
               onClick={() => pick(v)}
             >
               {busy === v.id ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-              Install
+              {t("Install")}
             </Button>
           </div>
         ))}
@@ -176,7 +177,7 @@ function ResultCard({
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={(e) => e.key === "Enter" && onOpen()}
-      className="hairline shadow-card flex cursor-pointer gap-4 rounded-xl border bg-surface p-4 transition hover:border-fg/15"
+      className="hairline shadow-card flex cursor-pointer gap-4 lift-card rounded-xl border bg-surface p-4"
     >
       <ProjectIcon url={hit.iconUrl} title={hit.title} size={56} />
       <div className="min-w-0 flex-1">
@@ -200,7 +201,7 @@ function ResultCard({
           <Badge tone="success">
             <span className="inline-flex items-center gap-1">
               <Check size={11} />
-              Installed
+              {t("Installed")}
             </span>
           </Badge>
         ) : (
@@ -214,7 +215,7 @@ function ResultCard({
             }}
           >
             {state === "busy" ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-            Install
+            {t("Install")}
           </Button>
         )}
       </div>
@@ -299,7 +300,7 @@ export function BrowseScreen() {
   return (
     <>
       <PageHeader
-        subtitle="Find modpacks, mods, resource packs and shaders."
+        subtitle={t("Find modpacks, mods, resource packs and shaders.")}
         actions={
           <Segmented<Source>
             value={source}
@@ -334,7 +335,7 @@ export function BrowseScreen() {
               k.value === kind ? "bg-accent text-accent-fg" : "hairline border bg-surface text-muted hover:text-fg",
             )}
           >
-            {k.label}
+            {t(k.label)}
           </button>
         ))}
         <div className="flex-1" />
@@ -363,11 +364,11 @@ export function BrowseScreen() {
       )}
 
       {error ? (
-        <EmptyState icon={Compass} title="Couldn't search" body={error} />
+        <EmptyState icon={Compass} title={t("Couldn't search")} body={error} />
       ) : needsInstance ? (
-        <EmptyState icon={Compass} title="No instance to install into" body="Create an instance first, or install a modpack." />
+        <EmptyState icon={Compass} title={t("No instance to install into")} body={t("Create an instance first, or install a modpack.")} />
       ) : hits.length === 0 && !loading ? (
-        <EmptyState icon={Search} title="No results" body="Try a different search." />
+        <EmptyState icon={Search} title={t("No results")} body={t("Try a different search.")} />
       ) : (
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
           {hits.map((h) => {

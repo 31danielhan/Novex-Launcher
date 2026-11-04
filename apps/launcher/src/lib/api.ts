@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
 export interface Account {
@@ -43,6 +44,8 @@ export interface Instance {
   javaPath?: string | null;
   jvmArgs?: string | null;
   modpack?: ModpackRef | null;
+  /** Gets the launcher's game settings before each launch. */
+  useGameOptions: boolean;
 }
 
 export interface ModpackRef {
@@ -59,6 +62,7 @@ export interface InstancePatch {
   memoryMb: number | null;
   javaPath: string | null;
   jvmArgs: string | null;
+  useGameOptions?: boolean;
 }
 
 /** "Fabric 0.20.1 · 26.3" or "Vanilla 26.3". */
@@ -133,9 +137,37 @@ export interface InstalledItem {
   projectId: string | null;
 }
 
+export interface ContentUpdate {
+  kind: ContentKind;
+  file: string;
+  source: Source;
+  projectId: string;
+  versionId: string;
+  version: string;
+}
+
+export type InstanceFolder = "mods" | "resourcepacks" | "shaderpacks" | "saves" | "screenshots";
+
 export interface ModpackInstalled {
   instance: Instance;
   skipped: string[];
+}
+
+/** Live numbers for a running game. CPU and GPU are 0-100 shares of the machine; GPU is system-wide. */
+export interface InstanceStats {
+  startedAt: number;
+  memoryMb: number;
+  maxMemoryMb: number;
+  cpu: number;
+  gpu: number | null;
+}
+
+export interface ClientStatus {
+  enabled: boolean;
+  /** Why Novex Client can't run on this instance, if it can't. */
+  unsupported: string | null;
+  /** Contents of the instance's config/novex-client.json. */
+  modules: Record<string, boolean | number>;
 }
 
 export interface Settings {
@@ -143,6 +175,23 @@ export interface Settings {
   javaPath: string | null;
   jvmArgs: string;
   autoUpdate: boolean;
+  curseforgeApiKey: string | null;
+  gameOptions: GameOptions;
+  gameOptionsLegacy: GameOptions;
+  template: TemplateInfo | null;
+}
+
+/**
+ * Game settings written into every instance before launch, by option id (see lib/gameOptions.ts).
+ * Options not in the map keep each instance's own value.
+ */
+export type GameOptions = Record<string, boolean | number | string>;
+
+/** The instance whose settings new instances start from. */
+export interface TemplateInfo {
+  name: string;
+  version: string;
+  includeConfig: boolean;
 }
 
 export interface UpdateInfo {
@@ -188,12 +237,21 @@ export const api = {
   loaderVersions: (kind: LoaderKind, game: string) =>
     call<LoaderVersion[]>("loader_versions", { kind, game }),
   deleteInstance: (id: string) => call<void>("instance_delete", { id }),
-  instanceFolder: (id: string) => call<string>("instance_folder", { id }),
+  instanceFolder: (id: string, sub?: InstanceFolder) =>
+    call<string>("instance_folder", { id, sub: sub ?? null }),
+  latestLog: (id: string) => call<string[]>("instance_latest_log", { id }),
   openPath: (path: string) => call<void>("open_path", { path }),
 
   launch: (id: string) => call<void>("launch_instance", { id }),
   kill: (id: string) => call<void>("kill_instance", { id }),
   running: () => call<string[]>("running_instances"),
+  instanceStats: (id: string) => call<InstanceStats | null>("instance_stats", { id }),
+
+  clientStatus: (instanceId: string) => call<ClientStatus>("client_status", { instanceId }),
+  clientSetEnabled: (instanceId: string, enabled: boolean) =>
+    call<ClientStatus>("client_set_enabled", { instanceId, enabled }),
+  clientSetModule: (instanceId: string, key: string, value: boolean | number) =>
+    call<ClientStatus>("client_set_module", { instanceId, change: { key, value } }),
 
   contentSources: () => call<{ curseforge: boolean }>("content_sources"),
   search: (query: SearchQuery) => call<SearchPage>("content_search", { query }),
@@ -207,6 +265,7 @@ export const api = {
     versionId: string | null,
   ) => call<string[]>("content_install", { instanceId, source, projectId, kind, versionId }),
   installedContent: (instanceId: string) => call<InstalledItem[]>("content_list", { instanceId }),
+  contentUpdates: (instanceId: string) => call<ContentUpdate[]>("content_updates", { instanceId }),
   setContentEnabled: (instanceId: string, kind: ContentKind, file: string, enabled: boolean) =>
     call<void>("content_set_enabled", { instanceId, kind, file, enabled }),
   removeContent: (instanceId: string, kind: ContentKind, file: string) =>
@@ -225,6 +284,9 @@ export const api = {
 
   settings: () => call<Settings>("settings_get"),
   saveSettings: (settings: Settings) => call<Settings>("settings_set", { settings }),
+  setTemplate: (instanceId: string, includeConfig: boolean) =>
+    call<Settings>("game_template_set", { instanceId, includeConfig }),
+  clearTemplate: () => call<Settings>("game_template_clear"),
 };
 
 export function errorText(e: unknown): string {
@@ -236,11 +298,11 @@ export function compactNumber(n: number): string {
 }
 
 export function timeAgo(secs?: number | null): string {
-  if (!secs) return "Never played";
+  if (!secs) return t("Never played");
   const d = Date.now() / 1000 - secs;
-  if (d < 60) return "Just now";
-  if (d < 3600) return `${Math.floor(d / 60)} min ago`;
-  if (d < 86400) return `${Math.floor(d / 3600)} h ago`;
-  if (d < 86400 * 30) return `${Math.floor(d / 86400)} d ago`;
+  if (d < 60) return t("Just now");
+  if (d < 3600) return t("{n} min ago", { n: Math.floor(d / 60) });
+  if (d < 86400) return t("{n} h ago", { n: Math.floor(d / 3600) });
+  if (d < 86400 * 30) return t("{n} d ago", { n: Math.floor(d / 86400) });
   return new Date(secs * 1000).toLocaleDateString();
 }

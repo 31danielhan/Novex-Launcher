@@ -1,0 +1,21 @@
+{
+    "targets": { "swap": {} },
+    "passes": [
+        {
+            "vertex_shader": "minecraft:post/blit",
+            "fragment_shader": "novex-client:post/motion_blur",
+            "inputs": [
+                { "sampler_name": "In", "target": "minecraft:main" },
+                { "sampler_name": "Motion", "location": "novex-client:motion", "width": 10, "height": 1, "bilinear": false }
+            ],
+            "output": "swap"
+        },
+        {
+            "vertex_shader": "minecraft:post/blit",
+            "fragment_shader": "minecraft:post/blit",
+            "inputs": [{ "sampler_name": "In", "target": "swap" }],
+            "uniforms": [{ "name": "ColorModulate", "type": "vec4", "values": [1.0, 1.0, 1.0, 1.0] }],
+            "output": "minecraft:main"
+        }
+    ]
+}

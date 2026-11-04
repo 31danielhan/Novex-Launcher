@@ -1,0 +1,45 @@
+plugins {
+	id 'java-library'
+	id 'net.neoforged.moddev' version '2.0.148'
+}
+
+// HUD logic shared by every version lives in ../../core.
+sourceSets.main.java.srcDir "../../core/src"
+
+base {
+	archivesName = "novex-client-neoforge-${minecraft_version}"
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(project.java_version as int)
+
+neoForge {
+	version = project.neo_version
+	runs {
+		client {
+			client()
+		}
+	}
+	mods {
+		"novex_client" {
+			sourceSet(sourceSets.main)
+		}
+	}
+}
+
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+	var props = [
+			version                : project.version,
+			minecraft_version_range: minecraft_version_range,
+			neo_version            : neo_version,
+	]
+	inputs.properties props
+	expand props
+	from "src/main/templates"
+	into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8'
+}

@@ -21,13 +21,16 @@ export default {
         danger: token("danger"),
       },
       fontFamily: {
-        sans: ['"Inter Variable"', "Inter", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        sans: ['"Instrument Sans Variable"', "Instrument Sans", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        display: ['"Bricolage Grotesque Variable"', "system-ui", "sans-serif"],
       },
+      // Radius grows with the size of the thing: controls 6, wells 8, panels 12, dialogs 16.
       borderRadius: {
-        DEFAULT: "10px",
-        lg: "14px",
-        xl: "20px",
-        "2xl": "24px",
+        DEFAULT: "6px",
+        md: "6px",
+        lg: "8px",
+        xl: "12px",
+        "2xl": "16px",
       },
       transitionDuration: {
         DEFAULT: "160ms",

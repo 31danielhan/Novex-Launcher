@@ -1,6 +1,8 @@
+import { t } from "../i18n";
 import {
   Boxes,
   Compass,
+  Gamepad2,
   LayoutGrid,
   Moon,
   Settings,
@@ -10,6 +12,8 @@ import {
 } from "lucide-react";
 import logo from "../assets/logo.svg";
 import { useApp, type Screen } from "../store";
+import { statusOf, useLauncher } from "../launcher";
+import { gamePhase, type Phase } from "../lib/phase";
 import { cx } from "./ui";
 
 const items: { id: Screen; label: string; icon: LucideIcon }[] = [
@@ -17,48 +21,98 @@ const items: { id: Screen; label: string; icon: LucideIcon }[] = [
   { id: "instances", label: "Instances", icon: Boxes },
   { id: "browse", label: "Browse", icon: Compass },
   { id: "client", label: "Novex Client", icon: Swords },
+  { id: "game", label: "Game settings", icon: Gamepad2 },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
 function NavButton({ id, label, icon: Icon }: { id: Screen; label: string; icon: LucideIcon }) {
   const { screen, setScreen } = useApp();
+  const openContent = useLauncher((s) => s.openContent);
   const active = screen === id;
   return (
     <button
-      onClick={() => setScreen(id)}
+      onClick={() => {
+        // The Instances button always leads back to the list, not an open instance page.
+        if (id === "instances") openContent(null);
+        setScreen(id);
+      }}
       aria-current={active ? "page" : undefined}
       className={cx(
-        "flex h-10 w-full items-center gap-3 rounded-full px-3.5 text-[13px] font-medium transition",
-        active ? "shadow-card bg-surface text-fg" : "text-muted hover:bg-fg/[0.04] hover:text-fg",
+        "nudge relative flex h-9 w-full items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition",
+        active
+          ? "glass shadow-card bg-surface text-fg before:absolute before:inset-y-2 before:-left-3 before:w-[3px] before:rounded-r before:bg-accent"
+          : "text-muted hover:bg-fg/[0.05] hover:text-fg",
       )}
     >
-      <Icon size={17} strokeWidth={active ? 2.1 : 1.8} />
-      {label}
+      <Icon size={16} strokeWidth={active ? 2.2 : 1.8} className={active ? "text-accent" : undefined} />
+      {t(label)}
     </button>
   );
 }
 
-/** Promo card for the PvP client, like the upgrade card in the sidebar of dashboard apps. */
+/** Pointer to the PvP client page, kept small so it sits under the nav without competing. */
 function ClientCard() {
   const setScreen = useApp((s) => s.setScreen);
   return (
-    <div className="hairline shadow-card overflow-hidden rounded-xl border bg-surface">
-      <div className="grid h-20 place-items-center bg-gradient-to-br from-violet-300 via-violet-200 to-sky-200 text-violet-900/70 dark:from-violet-500/40 dark:via-violet-400/20 dark:to-sky-400/20 dark:text-violet-100">
-        <Swords size={28} strokeWidth={1.6} />
+    <button
+      onClick={() => setScreen("client")}
+      className="glass hairline shadow-card lift-card flex w-full items-start gap-3 rounded-xl border bg-surface p-3 text-left"
+    >
+      <div className="slot grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-accent/15 text-accent">
+        <Swords size={17} strokeWidth={1.9} />
       </div>
-      <div className="p-3.5">
-        <p className="text-[13px] font-semibold">Play smoother with Novex Client</p>
-        <p className="mt-1 text-[12px] leading-snug text-muted">FPS boost and PvP HUDs, one toggle away.</p>
-        <button
-          onClick={() => setScreen("client")}
-          className="mt-3 h-8 w-full rounded-full bg-accent text-[12px] font-medium text-accent-fg transition hover:opacity-90"
-        >
-          Learn more
-        </button>
+      <div className="min-w-0">
+        <p className="text-[13px] font-semibold">{t("Novex Client")}</p>
+        <p className="mt-0.5 text-[12px] leading-snug text-muted">{t("HUD mod for every version, built in.")}</p>
       </div>
+    </button>
+  );
+}
+
+/** Instances that are starting or running, listed under Instances; each opens its live page. */
+function ActiveInstances() {
+  const { instances, status, logs, contentFor, openContent } = useLauncher();
+  const { screen, setScreen } = useApp();
+  const active = instances.filter((i) => statusOf(status, i.id).state !== "idle");
+  if (!active.length) return null;
+  return (
+    <div className="ml-[22px] mt-1 flex animate-[rise_220ms_cubic-bezier(0.2,0.8,0.2,1)] flex-col gap-0.5 border-l border-fg/10 pl-2">
+      {active.map((inst) => {
+        const phase = gamePhase(statusOf(status, inst.id), logs[inst.id]);
+        const busy = phase === "saving" || phase === "closing" || phase === "preparing" || phase === "loading";
+        const current = screen === "instances" && contentFor === inst.id;
+        return (
+          <button
+            key={inst.id}
+            onClick={() => {
+              openContent(inst.id);
+              setScreen("instances");
+            }}
+            aria-current={current ? "page" : undefined}
+            className={cx(
+              "nudge flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-[12px] transition",
+              current ? "bg-surface font-medium text-fg shadow-card" : "text-muted hover:bg-fg/[0.05] hover:text-fg",
+            )}
+          >
+            <span className={cx("h-1.5 w-1.5 shrink-0 rounded-full", busy ? "animate-pulse bg-amber-500" : "bg-success")} />
+            <span className="min-w-0 flex-1 truncate">{inst.name}</span>
+            {phase && <span className="shrink-0 text-[10px] text-muted">{t(phaseShort[phase])}</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }
+
+const phaseShort: Record<Phase, string> = {
+  preparing: "Starting",
+  loading: "Loading",
+  menu: "Menu",
+  joining: "Joining",
+  playing: "Playing",
+  saving: "Saving",
+  closing: "Closing",
+};
 
 function ThemeSwitch() {
   // Subscribing to theme re-renders this when it changes; the resolved value is on <html>.
@@ -71,7 +125,7 @@ function ThemeSwitch() {
       aria-pressed={on}
       onClick={() => setTheme(value)}
       className={cx(
-        "grid h-8 flex-1 place-items-center rounded-full transition",
+        "grid h-7 flex-1 place-items-center rounded-md transition",
         on ? "shadow-card bg-surface text-fg" : "text-muted hover:text-fg",
       )}
     >
@@ -79,7 +133,7 @@ function ThemeSwitch() {
     </button>
   );
   return (
-    <div className="mt-3 flex rounded-full bg-fg/[0.05] p-1">
+    <div className="slot mt-3 flex rounded-lg bg-fg/[0.05] p-1">
       {option("light", Sun, !dark)}
       {option("dark", Moon, dark)}
     </div>
@@ -91,11 +145,14 @@ export function Sidebar() {
     <nav data-tauri-drag-region className="titlebar-inset flex w-56 shrink-0 flex-col px-3 pb-4 pt-5">
       <div data-tauri-drag-region className="mb-6 flex items-center gap-2.5 px-2">
         <img src={logo} alt="" draggable={false} className="pointer-events-none h-8 w-8" />
-        <span className="pointer-events-none text-[15px] font-semibold tracking-tight">Novex</span>
+        <span className="display pointer-events-none text-[19px] font-bold">Novex</span>
       </div>
       <div className="flex flex-col gap-1">
         {items.map((i) => (
-          <NavButton key={i.id} {...i} />
+          <div key={i.id}>
+            <NavButton {...i} />
+            {i.id === "instances" && <ActiveInstances />}
+          </div>
         ))}
       </div>
       <div className="flex-1" />
