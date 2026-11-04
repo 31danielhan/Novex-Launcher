@@ -119,7 +119,12 @@ fn status(state: &AppState, inst: &Instance) -> ClientStatus {
 /// Writes the Client tab's settings into the instance's config/novex-client.json, leaving
 /// everything else there (such as the HUD layout) alone. The 1.8 page wins before 1.9. The game
 /// reads the file at startup, so this runs before every launch.
-pub fn apply(paths: &Paths, inst: &Instance, shared: &GameOptions, legacy: &GameOptions) -> Result<()> {
+pub fn apply(
+    paths: &Paths,
+    inst: &Instance,
+    shared: &GameOptions,
+    legacy: &GameOptions,
+) -> Result<()> {
     if !jar_path(paths, &inst.id).exists() {
         return Ok(());
     }
@@ -137,7 +142,9 @@ pub fn apply(paths: &Paths, inst: &Instance, shared: &GameOptions, legacy: &Game
         // "hudSize.fps" sets fps inside the hudSize object.
         match k.split_once('.') {
             Some((group, key)) => {
-                let group = cfg.entry(group).or_insert_with(|| Value::Object(Map::new()));
+                let group = cfg
+                    .entry(group)
+                    .or_insert_with(|| Value::Object(Map::new()));
                 if !group.is_object() {
                     *group = Value::Object(Map::new());
                 }
