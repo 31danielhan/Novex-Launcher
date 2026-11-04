@@ -196,9 +196,9 @@ function Updates({ s, save }: SettingsProps) {
           t("Built in")
         )}
       </Row>
-      <Row label={t("Check automatically")} hint={t("Look for updates each time Novex starts.")}>
+      <Row label={t("Update automatically")} hint={t("Install updates each time Novex starts, unless a game is running.")}>
         <Toggle
-          label={t("Check for updates automatically")}
+          label={t("Update automatically")}
           checked={s.autoUpdate}
           disabled={!info.configured}
           onChange={(autoUpdate) => save({ ...s, autoUpdate })}

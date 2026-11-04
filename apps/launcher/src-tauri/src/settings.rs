@@ -15,7 +15,7 @@ pub struct Settings {
     /// Overrides the managed runtime when set.
     pub java_path: Option<String>,
     pub jvm_args: String,
-    /// Check GitHub for launcher and interface updates at startup.
+    /// Install launcher and interface updates from GitHub at startup.
     pub auto_update: bool,
     /// CurseForge API key from console.curseforge.com.
     pub curseforge_api_key: Option<String>,

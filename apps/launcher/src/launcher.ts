@@ -237,6 +237,17 @@ export const useLauncher = create<LauncherState>((set, get) => ({
   openInstanceSettings: (settingsFor) => set({ settingsFor }),
 }));
 
+const UPDATE_CHECK_MS = 6 * 60 * 60 * 1000;
+
+/** Installs any update when the launcher opens, unless a game is already running. */
+async function installAtStartup() {
+  const { checkForUpdates, applyUpdate } = useLauncher.getState();
+  await checkForUpdates();
+  const { available, status, pack } = useLauncher.getState();
+  const busy = pack !== null || Object.values(status).some((s) => s.state === "running" || s.state === "launching");
+  if (available && !busy) await applyUpdate();
+}
+
 function finishPack({ instance, skipped }: { instance: Instance; skipped: string[] }) {
   useLauncher.setState({
     notice: skipped.length
@@ -312,5 +323,9 @@ export async function initLauncher() {
   }));
 
   const settings = await api.settings().catch(() => null);
-  if (settings?.autoUpdate) useLauncher.getState().checkForUpdates();
+  if (settings?.autoUpdate) {
+    void installAtStartup();
+    // For a launcher left open: this only shows the update button, so it never restarts mid-use.
+    setInterval(() => void useLauncher.getState().checkForUpdates(), UPDATE_CHECK_MS);
+  }
 }
