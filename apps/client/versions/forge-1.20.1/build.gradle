@@ -1,0 +1,57 @@
+plugins {
+	id 'java-library'
+	id 'net.neoforged.moddev.legacyforge' version '2.0.148'
+}
+
+// HUD logic shared by every version lives in ../../core.
+sourceSets.main.java.srcDir "../../core/src"
+
+base {
+	archivesName = "novex-client-forge-${minecraft_version}"
+}
+
+// Build with JDK 21 but emit Java 17 classes, which is what Minecraft 1.20.1 ships.
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+tasks.withType(JavaCompile).configureEach {
+	options.release = 17
+	options.encoding = 'UTF-8'
+}
+
+legacyForge {
+	version = project.forge_version
+	runs {
+		client {
+			client()
+		}
+	}
+	mods {
+		"novex_client" {
+			sourceSet(sourceSets.main)
+		}
+	}
+}
+
+// Forge 1.20.1 runs with SRG names, so mixins need a refmap; ModDevGradle writes it and adds the config to the manifest.
+mixin {
+	add sourceSets.main, "novex_client.refmap.json"
+	config "novex_client.mixins.json"
+}
+
+dependencies {
+	annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
+}
+
+// Forge 1.20.1 finds mixin configs through the jar manifest.
+jar {
+	manifest.attributes("MixinConfigs": "novex_client.mixins.json")
+}
+
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+	var props = [version: project.version, minecraft_version_range: minecraft_version_range]
+	inputs.properties props
+	expand props
+	from "src/main/templates"
+	into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+legacyForge.ideSyncTask generateModMetadata

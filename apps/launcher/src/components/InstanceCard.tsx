@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   FolderOpen,
@@ -29,7 +30,7 @@ export function InstanceIcon({ inst, size = 44 }: { inst: Instance; size?: numbe
       <img
         src={icon}
         alt=""
-        className="shrink-0 rounded-lg bg-raised object-cover"
+        className="slot shrink-0 rounded-lg bg-raised object-cover [image-rendering:pixelated]"
         style={{ width: size, height: size }}
       />
     );
@@ -43,7 +44,7 @@ export function InstanceIcon({ inst, size = 44 }: { inst: Instance; size?: numbe
   return (
     <div
       className={cx(
-        "grid shrink-0 place-items-center rounded-lg bg-gradient-to-br font-semibold",
+        "slot grid shrink-0 place-items-center rounded-lg bg-gradient-to-br font-display font-bold",
         loaderTint[inst.loader],
       )}
       style={{ width: size, height: size, fontSize: size * 0.25 }}
@@ -65,7 +66,7 @@ export function PlayButton({ inst, large }: { inst: Instance; large?: boolean })
   if (s.state === "running") {
     return (
       <Button icon={Square} onClick={() => kill(inst.id)} className={size}>
-        Stop
+        {t("Stop")}
       </Button>
     );
   }
@@ -73,13 +74,13 @@ export function PlayButton({ inst, large }: { inst: Instance; large?: boolean })
     return (
       <Button variant="primary" disabled className={size}>
         <Loader2 size={16} className="animate-spin" />
-        Launching
+        {t("Launching")}
       </Button>
     );
   }
   return (
     <Button variant="primary" icon={Play} onClick={() => launch(inst.id)} className={size}>
-      Play
+      {t("Play")}
     </Button>
   );
 }
@@ -89,9 +90,9 @@ export function ProgressBar({ s }: { s: Status }) {
   const pct = s.total > 0 ? (s.done / s.total) * 100 : null;
   return (
     <div className="mt-3">
-      <div className="h-1 overflow-hidden rounded-full bg-fg/10">
+      <div className="slot h-1.5 overflow-hidden rounded-sm bg-fg/10">
         <div
-          className={cx("h-full rounded-full bg-success transition-all", pct === null && "w-1/3 animate-pulse")}
+          className={cx("h-full bg-success transition-all", pct === null && "w-1/3 animate-pulse")}
           style={pct === null ? undefined : { width: `${pct}%` }}
         />
       </div>
@@ -117,7 +118,7 @@ function IconAction({
       title={label}
       onClick={onClick}
       className={cx(
-        "grid h-8 w-8 place-items-center rounded-full text-muted transition",
+        "grid h-8 w-8 place-items-center rounded-md text-muted transition",
         danger ? "hover:bg-danger/10 hover:text-danger" : "hover:bg-fg/5 hover:text-fg",
       )}
     >
@@ -156,14 +157,21 @@ export function InstanceCard({ inst }: { inst: Instance }) {
   };
 
   return (
-    <Card className="group p-5">
+    <Card className="lift-card group p-5">
       <div className="flex items-start gap-3">
-        <InstanceIcon inst={inst} />
+        <button onClick={() => openContent(inst.id)} aria-label={`Open ${inst.name}`} className="shrink-0">
+          <InstanceIcon inst={inst} />
+        </button>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{inst.name}</p>
+          <button
+            onClick={() => openContent(inst.id)}
+            className="block max-w-full truncate text-left font-medium hover:underline"
+          >
+            {inst.name}
+          </button>
           <p className="truncate text-[12px] text-muted">
             {describe(inst)} ·{" "}
-            {s.state === "running" ? <span className="text-success">Running</span> : timeAgo(inst.lastPlayed)}
+            {s.state === "running" ? <span className="text-success">{t("Running")}</span> : timeAgo(inst.lastPlayed)}
           </p>
         </div>
       </div>
@@ -173,20 +181,20 @@ export function InstanceCard({ inst }: { inst: Instance }) {
       <div className="mt-4 flex items-center justify-between">
         <PlayButton inst={inst} />
         <div className="flex gap-0.5 opacity-60 transition group-hover:opacity-100">
-          <IconAction label="Content" onClick={() => openContent(inst.id)}>
+          <IconAction label={t("Mods and packs")} onClick={() => openContent(inst.id)}>
             <Package size={15} />
           </IconAction>
-          <IconAction label="Logs" onClick={() => openLogs(inst.id)}>
+          <IconAction label={t("Logs")} onClick={() => openLogs(inst.id)}>
             <ScrollText size={15} />
           </IconAction>
-          <IconAction label="Open folder" onClick={openFolder}>
+          <IconAction label={t("Open folder")} onClick={openFolder}>
             <FolderOpen size={15} />
           </IconAction>
-          <IconAction label="Instance settings" onClick={() => openInstanceSettings(inst.id)}>
+          <IconAction label={t("Instance settings")} onClick={() => openInstanceSettings(inst.id)}>
             <SlidersHorizontal size={15} />
           </IconAction>
-          <IconAction label={confirmDelete ? "Click again to delete" : "Delete"} onClick={remove} danger>
-            {confirmDelete ? <span className="text-[11px] font-semibold">Sure?</span> : <Trash2 size={15} />}
+          <IconAction label={t(confirmDelete ? "Click again to delete" : "Delete")} onClick={remove} danger>
+            {confirmDelete ? <span className="text-[11px] font-semibold">{t("Sure?")}</span> : <Trash2 size={15} />}
           </IconAction>
         </div>
       </div>

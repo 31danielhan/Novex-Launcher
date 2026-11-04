@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useEffect, useState } from "react";
 import { Copy } from "lucide-react";
 import { api, errorText, loaderLabels, type InstancePatch } from "../lib/api";
@@ -12,6 +13,7 @@ const EMPTY: InstancePatch = {
   memoryMb: null,
   javaPath: null,
   jvmArgs: null,
+  useGameOptions: true,
 };
 
 export function InstanceSettingsDialog() {
@@ -30,6 +32,7 @@ export function InstanceSettingsDialog() {
       memoryMb: inst.memoryMb ?? null,
       javaPath: inst.javaPath ?? null,
       jvmArgs: inst.jvmArgs ?? null,
+      useGameOptions: inst.useGameOptions !== false,
     });
     // Reset only when a different instance opens, not on every list refresh.
   }, [settingsFor]);
@@ -117,6 +120,18 @@ export function InstanceSettingsDialog() {
           ) : (
             <p className="text-[12px] text-muted">Uses the global setting.</p>
           )}
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-[12px] font-medium text-muted">{t("Use the launcher's game settings")}</p>
+            <p className="text-[12px] text-muted">{t("Off keeps this instance's own options as they are.")}</p>
+          </div>
+          <Toggle
+            label={t("Use the launcher's game settings")}
+            checked={patch.useGameOptions !== false}
+            onChange={(on) => set({ useGameOptions: on })}
+          />
         </div>
 
         <Field label="Java executable">

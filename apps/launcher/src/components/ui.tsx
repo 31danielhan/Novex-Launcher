@@ -15,16 +15,16 @@ export function Button({
   return (
     <button
       className={cx(
-        "inline-flex h-9 items-center justify-center gap-2 rounded-full px-4 text-[13px] font-medium transition",
+        "lift inline-flex h-9 items-center justify-center gap-2 rounded-md px-3.5 text-[13px] font-medium",
         "disabled:cursor-not-allowed disabled:opacity-40",
-        variant === "primary" && "bg-accent text-accent-fg shadow-sm hover:opacity-90 active:opacity-100",
-        variant === "subtle" && "hairline border bg-surface text-fg hover:bg-raised",
+        variant === "primary" && "press bg-accent text-accent-fg hover:brightness-110",
+        variant === "subtle" && "hairline press border bg-surface text-fg hover:bg-raised",
         variant === "ghost" && "text-muted hover:bg-fg/5 hover:text-fg",
         className,
       )}
       {...props}
     >
-      {Icon && <Icon size={16} strokeWidth={2} />}
+      {Icon && <Icon size={15} strokeWidth={2} />}
       {children}
     </button>
   );
@@ -32,7 +32,7 @@ export function Button({
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <div className={cx("hairline shadow-card rounded-xl border bg-surface", className)}>{children}</div>
+    <div className={cx("glass hairline shadow-card rounded-xl border bg-surface", className)}>{children}</div>
   );
 }
 
@@ -58,11 +58,11 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="hairline flex flex-col items-center justify-center rounded-xl border border-dashed px-6 py-14 text-center">
-      <div className="shadow-card mb-4 grid h-11 w-11 place-items-center rounded-full bg-surface text-fg">
+    <div className="hairline flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-14 text-center">
+      <div className="slot mb-4 grid h-12 w-12 place-items-center rounded-lg bg-raised text-muted">
         <Icon size={20} />
       </div>
-      <h3 className="font-medium">{title}</h3>
+      <h3 className="display text-[17px] font-semibold">{title}</h3>
       <p className="mt-1 max-w-sm text-[13px] text-muted">{body}</p>
       {action && <div className="mt-5">{action}</div>}
     </div>
@@ -114,14 +114,14 @@ export function Segmented<T extends string>({
   disabled?: boolean;
 }) {
   return (
-    <div className="inline-flex rounded-full bg-raised p-1">
+    <div className="slot inline-flex rounded-lg bg-raised p-1">
       {options.map((o) => (
         <button
           key={o.value}
           disabled={disabled}
           onClick={() => onChange(o.value)}
           className={cx(
-            "h-7 rounded-full px-3.5 text-[12px] font-medium transition disabled:cursor-not-allowed",
+            "h-7 rounded-md px-3.5 text-[12px] font-medium transition disabled:cursor-not-allowed",
             value === o.value ? "bg-surface text-fg shadow-sm" : "text-muted hover:text-fg",
           )}
         >
@@ -138,7 +138,7 @@ export function Badge({ tone = "neutral", children }: { tone?: Tone; children: R
   return (
     <span
       className={cx(
-        "rounded-full border px-2 py-0.5 text-[11px] font-medium",
+        "rounded border px-1.5 py-px text-[11px] font-medium",
         tone === "neutral" && "hairline text-muted",
         tone === "success" && "border-success/30 bg-success/10 text-success",
         tone === "danger" && "border-danger/30 bg-danger/10 text-danger",

@@ -2,6 +2,8 @@
 
 pub mod files;
 pub mod logs;
+pub mod skin;
+pub mod stats;
 pub mod version;
 
 use std::collections::HashMap;
@@ -184,6 +186,13 @@ fn build_args(
 ) -> Vec<String> {
     let mut jvm = vec![
         format!("-Xmx{}M", settings.max_memory_mb),
+        // The garbage collector settings the official launcher uses, for fewer stutters.
+        "-XX:+UnlockExperimentalVMOptions".into(),
+        "-XX:+UseG1GC".into(),
+        "-XX:G1NewSizePercent=20".into(),
+        "-XX:G1ReservePercent=20".into(),
+        "-XX:MaxGCPauseMillis=50".into(),
+        "-XX:G1HeapRegionSize=32M".into(),
         format!("-Xms{}M", settings.max_memory_mb.min(512)),
         "-Dlog4j2.formatMsgNoLookups=true".to_string(),
     ];
@@ -332,6 +341,31 @@ async fn start(app: &AppHandle, state: &AppState, id: &str) -> Result<()> {
     };
     let plan = prepare(&state.http, &state.paths, &settings, &target, &creds, emit).await?;
 
+    // Bring Novex Client up to date with the build this launcher carries.
+    crate::client::sync(&state.paths, &inst)?;
+    skin::sync(
+        &state.http,
+        &game_dir,
+        &creds.name,
+        creds.user_type == "legacy",
+    )
+    .await;
+    {
+        let global = state.settings.lock().await;
+        crate::game_options::apply(
+            &state.paths,
+            &inst,
+            &global.game_options,
+            &global.game_options_legacy,
+            global.template.as_ref(),
+        )?;
+        crate::client::apply(
+            &state.paths,
+            &inst,
+            &global.client_options,
+            &global.client_options_legacy,
+        )?;
+    }
     emit("Starting", 0, 0);
     let mut child = command(&plan, &game_dir).spawn().map_err(|e| {
         msg(format!(
@@ -339,6 +373,17 @@ async fn start(app: &AppHandle, state: &AppState, id: &str) -> Result<()> {
             plan.java.display()
         ))
     })?;
+
+    if let Some(pid) = child.id() {
+        state.monitor.start(
+            id,
+            stats::Session {
+                pid,
+                started_at: now_secs(),
+                max_memory_mb: settings.max_memory_mb,
+            },
+        );
+    }
 
     inst.last_played = Some(now_secs());
     instances::save(&state.paths, &inst)?;
@@ -370,6 +415,7 @@ async fn start(app: &AppHandle, state: &AppState, id: &str) -> Result<()> {
         };
         let state = app.state::<AppState>();
         state.running.lock().await.remove(&id);
+        state.monitor.end(&id);
         if let Ok(mut inst) = instances::load(&state.paths, &id) {
             inst.play_time_secs += started.elapsed().as_secs();
             let _ = instances::save(&state.paths, &inst);

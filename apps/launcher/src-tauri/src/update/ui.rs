@@ -280,11 +280,13 @@ pub struct UiUpdate {
     pub version: String,
 }
 
+const NONE_PUBLISHED: &str = "No interface updates have been published.";
+
 async fn fetch_manifest(http: &Client) -> Result<(Manifest, String)> {
     let url = manifest_url()?;
     let resp = http.get(&url).send().await?;
     if resp.status() == reqwest::StatusCode::NOT_FOUND {
-        return Err(msg("No interface updates have been published."));
+        return Err(msg(NONE_PUBLISHED));
     }
     let manifest: Manifest = resp.error_for_status()?.json().await?;
     let zip_url = match &manifest.url {
@@ -309,6 +311,8 @@ pub async fn check(
         Err(_) if repo().is_none() && std::env::var("NOVEX_UI_MANIFEST_URL").is_err() => {
             return Err(not_configured())
         }
+        // Nothing published yet just means there's no update.
+        Err(e) if e.to_string() == NONE_PUBLISHED => return Ok(None),
         Err(e) => return Err(e),
     };
     let Ok(v) = Version::parse(&m.version) else {

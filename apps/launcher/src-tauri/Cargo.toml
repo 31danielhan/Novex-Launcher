@@ -1,6 +1,6 @@
 [package]
 name = "novex-launcher"
-version = "0.1.0"
+version = "0.3.0"
 description = "A clean, minimal Minecraft launcher"
 edition = "2021"
 rust-version = "1.77.2"
@@ -34,6 +34,7 @@ keyring = { version = "3", features = ["apple-native", "windows-native", "sync-s
 tauri-plugin-updater = "2"
 minisign-verify = "0.3.0"
 semver = "1"
+sysinfo = { version = "0.33", default-features = false, features = ["system"] }
 
 [profile.release]
 codegen-units = 1

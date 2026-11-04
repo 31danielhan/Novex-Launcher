@@ -1,0 +1,27 @@
+modLoader="javafml"
+loaderVersion="[1,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="novex_client"
+version="${version}"
+displayName="Novex Client"
+authors="Novex"
+description='''HUD and quality-of-life modules for Novex Launcher. Information only: no reach, hitbox, auto-click or ESP.'''
+
+[[dependencies.novex_client]]
+	modId="neoforge"
+	type="required"
+	versionRange="[${neo_version},)"
+	ordering="NONE"
+	side="CLIENT"
+
+[[dependencies.novex_client]]
+	modId="minecraft"
+	type="required"
+	versionRange="${minecraft_version_range}"
+	ordering="NONE"
+	side="CLIENT"
+
+[[mixins]]
+config="novex_client.mixins.json"

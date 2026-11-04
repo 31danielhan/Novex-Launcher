@@ -1,0 +1,9 @@
+{
+	"required": true,
+	"package": "dev.novex.client.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": ["PlayerInfoMixin", "CameraMixin", "GameRendererMixin", "MouseHandlerMixin"],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

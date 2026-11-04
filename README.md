@@ -43,6 +43,27 @@ NOVEX_MSA_CLIENT_ID=<your-client-id> npm run tauri dev
 
 For release builds, add `NOVEX_MSA_CLIENT_ID` as a GitHub Actions secret. `release.yml` passes it to the build.
 
+## Novex Client
+
+`apps/client/` is Novex Client, a client-side HUD mod: FPS, CPS, ping, coordinates, keystrokes, armor and potion HUDs, toggle sprint, zoom and motion blur. The 1.8.9 build adds 1.7 block hit and eating animations, damage tilt and FOV effect switches, a cleaner scoreboard sidebar and a build height warning. Right Shift opens and closes its menu in game; settings live in `config/novex-client.json`. It works alongside Sodium and Embeddium.
+
+| Loader | Minecraft versions |
+|---|---|
+| Fabric, Quilt | 1.20.1, 1.20.4, 1.21.1, 1.21.4, 1.21.5, 1.21.8, 1.21.11, 26.1.2, 26.2, 26.3 |
+| NeoForge | 1.21.1, 1.21.11, 26.3 |
+| Forge | 1.8.9, 1.20.1 |
+
+The HUD itself is in `apps/client/core` (plain Java 8, no Minecraft code). Each folder in `apps/client/versions/` is a small adapter for one loader and version with its own Gradle build. All of them use the shared wrapper, except `forge-1.8.9`, which has its own Gradle 8.8 wrapper. Fabric adapters use mixins for clicks and zoom; NeoForge and Forge use the loader's own events for those. Motion blur is camera motion blur: each frame the mod writes the camera's turn into a small texture, and a post-processing shader blurs each pixel along the path the turn moved it (no frame blending, so no ghost copies). Each target has the shader in its resources and a mixin that runs it after the world is drawn; `core/.../MotionBlur.java` explains the texture format. The jar on an instance is replaced with the launcher's build before every launch, so updating the launcher updates the client.
+
+`./build-all.sh` builds every target and copies the jars to `apps/launcher/src-tauri/resources/client/`, which the launcher embeds when it compiles. The Novex Client page then turns the matching jar on per instance and installs Fabric API, plus Sodium or Embeddium where Modrinth has them. Pass target names to build only those, for example `./build-all.sh fabric-26.3`.
+
+Testing:
+
+- `./gradlew runClientGameTest` in a Fabric folder from 1.21.4 up opens a world and saves screenshots to `build/run/clientGameTest/screenshots/`.
+- `./boot-check.sh <target>` starts any target's dev client and reports whether it reached the title screen. On 1.20.1 and 26.1.2, add `GRADLE_ARGS=-PnoSodium`: those Sodium builds clash with the dev environment.
+
+Building needs JDK 21 and JDK 25 or newer. The 1.8.9 target downloads its own JDK 8 through Gradle.
+
 ## Mods and modpacks
 
 Browse searches Modrinth (no setup needed) and CurseForge. Mods, resource packs and shaders install into an instance, filtered to its Minecraft version and loader, with required dependencies. Modpacks install as new instances. Instances → Import takes a `.mrpack` or a CurseForge modpack `.zip`.

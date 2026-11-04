@@ -27,7 +27,7 @@ export function Dialog({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 grid animate-[fade_150ms_ease-out] place-items-center bg-black/30 p-6 backdrop-blur-[3px]"
+      className="fixed inset-0 z-50 grid animate-[fade_140ms_ease-out] place-items-center bg-black/40 p-6 backdrop-blur-[2px]"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
@@ -35,16 +35,16 @@ export function Dialog({
         aria-modal="true"
         aria-label={title}
         className={cx(
-          "hairline flex max-h-full w-full flex-col rounded-2xl border bg-surface shadow-2xl",
+          "glass hairline flex max-h-full w-full animate-[pop_200ms_cubic-bezier(0.2,0.8,0.2,1)] flex-col rounded-2xl border bg-surface shadow-2xl",
           wide ? "max-w-3xl" : "max-w-md",
         )}
       >
         <header className="flex items-center justify-between px-5 pb-2 pt-5">
-          <h2 className="font-semibold">{title}</h2>
+          <h2 className="display text-[18px] font-semibold">{title}</h2>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="grid h-8 w-8 place-items-center rounded-full text-muted hover:bg-fg/5 hover:text-fg"
+            className="grid h-8 w-8 place-items-center rounded-md text-muted hover:bg-fg/5 hover:text-fg"
           >
             <X size={16} />
           </button>
@@ -68,4 +68,4 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 }
 
 export const inputClass =
-  "hairline h-9 w-full rounded-full border bg-raised px-4 text-[13px] outline-none transition placeholder:text-muted focus:border-accent/60";
+  "hairline slot h-9 w-full rounded-md border bg-raised px-3 text-[13px] outline-none transition placeholder:text-muted focus:border-accent/60";

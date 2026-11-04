@@ -1,5 +1,5 @@
 //! CurseForge API v1. Needs an API key from https://console.curseforge.com, set as
-//! NOVEX_CURSEFORGE_API_KEY at build time (or at runtime in dev).
+//! NOVEX_CURSEFORGE_API_KEY at build time (or at runtime in dev), or saved in Settings.
 
 use reqwest::{Client, Url};
 use serde::de::DeserializeOwned;
@@ -17,9 +17,19 @@ const MINECRAFT: u32 = 432;
 /// CurseForge only serves the first 10,000 results of a search.
 const MAX_RESULTS: u32 = 10_000;
 
+/// Key entered in Settings; it wins over the environment so users can replace a bad build key.
+static SAVED_KEY: std::sync::RwLock<Option<String>> = std::sync::RwLock::new(None);
+
+pub fn set_saved_key(key: Option<String>) {
+    *SAVED_KEY.write().unwrap() = key.map(|k| k.trim().to_string()).filter(|k| !k.is_empty());
+}
+
 pub fn api_key() -> Option<String> {
-    std::env::var("NOVEX_CURSEFORGE_API_KEY")
-        .ok()
+    SAVED_KEY
+        .read()
+        .unwrap()
+        .clone()
+        .or_else(|| std::env::var("NOVEX_CURSEFORGE_API_KEY").ok())
         .or_else(|| option_env!("NOVEX_CURSEFORGE_API_KEY").map(str::to_string))
         .filter(|k| !k.trim().is_empty())
 }
@@ -56,14 +66,15 @@ fn loader_type(l: LoaderKind) -> Option<u32> {
 const LOADER_NAMES: [&str; 4] = ["Forge", "Fabric", "Quilt", "NeoForge"];
 
 fn key() -> Result<String> {
-    api_key().ok_or_else(|| {
-        msg("CurseForge isn't configured. Set NOVEX_CURSEFORGE_API_KEY to your CurseForge API key.")
-    })
+    api_key()
+        .ok_or_else(|| msg("CurseForge needs an API key. Add one in Settings → Content sources."))
 }
 
 fn check(resp: reqwest::Response) -> Result<reqwest::Response> {
     match resp.status().as_u16() {
-        401 | 403 => Err(msg("CurseForge rejected the API key.")),
+        401 | 403 => Err(msg(
+            "CurseForge rejected the API key. Check it in Settings → Content sources.",
+        )),
         _ => Ok(resp.error_for_status()?),
     }
 }

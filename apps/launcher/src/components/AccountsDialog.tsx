@@ -1,20 +1,88 @@
 import { useEffect, useState } from "react";
 import { Check, Copy, Loader2, LogIn, Trash2, UserPlus } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { api, errorText, type DeviceCode } from "../lib/api";
+import { api, errorText, type Account, type DeviceCode } from "../lib/api";
 import { useLauncher } from "../launcher";
 import { Dialog, inputClass } from "./Dialog";
 import { Badge, Button, cx } from "./ui";
 
-export function Avatar({ name, size = 32 }: { name?: string; size?: number }) {
+const faces = new Map<string, Promise<string | null>>();
+
+/** The face and hat layer cut from a skin, as an 8x8 image. */
+function drawFace(base64: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const skin = new Image();
+    skin.onerror = reject;
+    skin.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 8;
+      const g = canvas.getContext("2d");
+      if (!g) return reject(new Error("no canvas"));
+      g.drawImage(skin, 8, 8, 8, 8, 0, 0, 8, 8);
+      g.drawImage(skin, 40, 8, 8, 8, 0, 0, 8, 8);
+      resolve(canvas.toDataURL());
+    };
+    skin.src = `data:image/png;base64,${base64}`;
+  });
+}
+
+/** Cut from the same skin the game gets, so the two always match. Null if the name has none. */
+function faceOf(name: string): Promise<string | null> {
+  let face = faces.get(name);
+  if (!face) {
+    face = api
+      .accountSkin(name)
+      .then((skin) => (skin ? drawFace(skin) : null))
+      .catch(() => null);
+    faces.set(name, face);
+  }
+  return face;
+}
+
+export function Avatar({ account, size = 32 }: { account: Account; size?: number }) {
+  // undefined while loading; null means this name has no skin, which is Steve in game.
+  const [face, setFace] = useState<string | null | undefined>();
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let current = true;
+    setFace(undefined);
+    faceOf(account.name).then((f) => current && setFace(f));
+    return () => {
+      current = false;
+    };
+  }, [account.name]);
+
+  const src = face ?? (face === null ? `https://mc-heads.net/avatar/MHF_Steve/${size * 2}` : null);
+  if (src && !failed) {
+    return (
+      <img
+        src={src}
+        alt=""
+        width={size}
+        height={size}
+        onError={() => setFailed(true)}
+        className="shrink-0 rounded-[6px] [image-rendering:pixelated]"
+      />
+    );
+  }
   return (
     <span
       className="grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-fg/15 to-fg/5 font-semibold uppercase text-fg"
       style={{ width: size, height: size, fontSize: size * 0.42 }}
     >
-      {name?.[0] ?? "?"}
+      {account.name[0]}
     </span>
   );
+}
+
+/** Same rules as the backend, so the form can say what's wrong before submitting. */
+function offlineNameProblem(name: string, accounts: Account[]): string | null {
+  if (!/^[A-Za-z0-9_]{3,16}$/.test(name)) return "Use 3–16 letters, numbers or underscores.";
+  const taken = accounts.find((a) => a.name.toLowerCase() === name.toLowerCase());
+  if (taken?.kind === "microsoft") return "That name belongs to your Microsoft account.";
+  if (taken) return "You already have an offline account with that name.";
+  return null;
 }
 
 function SignIn({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
@@ -95,7 +163,13 @@ export function AccountsDialog() {
     useLauncher();
   const [signingIn, setSigningIn] = useState(false);
   const [offlineName, setOfflineName] = useState("");
+  const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const trimmedName = offlineName.trim();
+  const nameProblem = offlineNameProblem(trimmedName, accounts);
+  // Too short is only worth saying once the name could be finished; bad characters right away.
+  const showNameProblem =
+    !!nameProblem && (trimmedName.length >= 3 || /[^A-Za-z0-9_]/.test(trimmedName));
 
   const run = async (fn: () => Promise<unknown>) => {
     setError(null);
@@ -109,6 +183,7 @@ export function AccountsDialog() {
 
   const close = () => {
     setSigningIn(false);
+    setConfirmRemove(null);
     openAccounts(false);
   };
 
@@ -128,6 +203,28 @@ export function AccountsDialog() {
             <ul className="space-y-1">
               {accounts.map((a) => {
                 const active = a.uuid === activeAccount;
+                if (confirmRemove === a.uuid) {
+                  return (
+                    <li key={a.uuid} className="flex items-center gap-3 rounded bg-danger/10 px-2 py-2">
+                      <Avatar account={a} />
+                      <span className="flex-1 text-[13px]">
+                        Remove {a.name}? You'll have to sign in again.
+                      </span>
+                      <Button variant="ghost" onClick={() => setConfirmRemove(null)}>
+                        Cancel
+                      </Button>
+                      <button
+                        onClick={() => {
+                          setConfirmRemove(null);
+                          run(() => api.removeAccount(a.uuid));
+                        }}
+                        className="h-9 rounded-full bg-danger px-4 text-[13px] font-medium text-white transition hover:opacity-90"
+                      >
+                        Remove
+                      </button>
+                    </li>
+                  );
+                }
                 return (
                   <li
                     key={a.uuid}
@@ -140,7 +237,7 @@ export function AccountsDialog() {
                       className="flex flex-1 items-center gap-3 text-left"
                       onClick={() => run(() => api.selectAccount(a.uuid))}
                     >
-                      <Avatar name={a.name} />
+                      <Avatar account={a} />
                       <span className="flex-1">
                         <span className="block font-medium">{a.name}</span>
                         <span className="text-[12px] text-muted">
@@ -151,7 +248,11 @@ export function AccountsDialog() {
                     </button>
                     <button
                       aria-label={`Remove ${a.name}`}
-                      onClick={() => run(() => api.removeAccount(a.uuid))}
+                      onClick={() =>
+                        a.kind === "microsoft"
+                          ? setConfirmRemove(a.uuid)
+                          : run(() => api.removeAccount(a.uuid))
+                      }
                       className="grid h-8 w-8 place-items-center rounded text-muted opacity-0 transition hover:bg-danger/10 hover:text-danger group-hover:opacity-100"
                     >
                       <Trash2 size={15} />
@@ -175,27 +276,39 @@ export function AccountsDialog() {
           <div className="hairline space-y-2 border-t pt-4">
             <p className="text-[12px] font-medium text-muted">Offline account</p>
             {offlineAllowed ? (
-              <form
-                className="flex gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  run(async () => {
-                    await api.addOffline(offlineName);
-                    setOfflineName("");
-                  });
-                }}
-              >
-                <input
-                  value={offlineName}
-                  onChange={(e) => setOfflineName(e.target.value)}
-                  placeholder="Player name"
-                  maxLength={16}
-                  className={inputClass}
-                />
-                <Button icon={UserPlus} type="submit" disabled={!offlineName.trim()}>
-                  Add
-                </Button>
-              </form>
+              <>
+                <form
+                  className="flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (nameProblem) return;
+                    run(async () => {
+                      await api.addOffline(offlineName.trim());
+                      setOfflineName("");
+                    });
+                  }}
+                >
+                  <input
+                    value={offlineName}
+                    onChange={(e) => setOfflineName(e.target.value)}
+                    placeholder="Player name"
+                    maxLength={16}
+                    spellCheck={false}
+                    className={inputClass}
+                  />
+                  <Button icon={UserPlus} type="submit" disabled={!!nameProblem}>
+                    Add
+                  </Button>
+                </form>
+                {showNameProblem ? (
+                  <p className="text-[12px] text-danger">{nameProblem}</p>
+                ) : (
+                  <p className="text-[12px] text-muted">
+                    Offline accounts can play singleplayer, LAN and servers in offline mode. Online
+                    servers need your Microsoft account.
+                  </p>
+                )}
+              </>
             ) : (
               <p className="text-[12px] text-muted">
                 Sign in with a Microsoft account that owns Minecraft first, then you can add offline

@@ -38,6 +38,13 @@ pub struct Instance {
     /// Set when the instance was installed from a modpack.
     #[serde(default)]
     pub modpack: Option<ModpackRef>,
+    /// Write the launcher's game settings into this instance before it launches.
+    #[serde(default = "yes")]
+    pub use_game_options: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -74,6 +81,8 @@ pub struct InstancePatch {
     pub memory_mb: Option<u32>,
     pub java_path: Option<String>,
     pub jvm_args: Option<String>,
+    #[serde(default)]
+    pub use_game_options: Option<bool>,
 }
 
 pub fn dir(paths: &Paths, id: &str) -> PathBuf {
@@ -205,6 +214,7 @@ pub fn create(
         java_path: None,
         jvm_args: None,
         modpack,
+        use_game_options: true,
     };
     save(paths, &inst)?;
     std::fs::create_dir_all(game_dir(paths, &inst.id))?;
@@ -243,6 +253,9 @@ pub fn instance_update(
     inst.memory_mb = patch.memory_mb.map(|m| m.clamp(512, 65536));
     inst.java_path = clean(patch.java_path);
     inst.jvm_args = clean(patch.jvm_args);
+    if let Some(v) = patch.use_game_options {
+        inst.use_game_options = v;
+    }
     save(&state.paths, &inst)?;
     Ok(inst)
 }
@@ -279,9 +292,43 @@ pub async fn instance_delete(state: State<'_, AppState>, id: String) -> Result<(
 }
 
 #[tauri::command]
-pub fn instance_folder(state: State<'_, AppState>, id: String) -> Result<String> {
+pub fn instance_folder(
+    state: State<'_, AppState>,
+    id: String,
+    sub: Option<String>,
+) -> Result<String> {
     load(&state.paths, &id)?;
-    let d = game_dir(&state.paths, &id);
+    let mut d = game_dir(&state.paths, &id);
+    if let Some(sub) = sub {
+        // Only the game's own folders, so the UI can't point this anywhere else.
+        const KNOWN: [&str; 5] = [
+            "mods",
+            "resourcepacks",
+            "shaderpacks",
+            "saves",
+            "screenshots",
+        ];
+        if !KNOWN.contains(&sub.as_str()) {
+            return Err(msg(format!("Unknown folder: {sub}")));
+        }
+        d = d.join(sub);
+    }
     std::fs::create_dir_all(&d)?;
     Ok(d.to_string_lossy().into_owned())
+}
+
+/// The end of the game's `logs/latest.log`, for showing the last session before this
+/// launcher run streamed anything.
+#[tauri::command]
+pub fn instance_latest_log(state: State<'_, AppState>, id: String) -> Result<Vec<String>> {
+    load(&state.paths, &id)?;
+    const MAX_LINES: usize = 500;
+    let path = game_dir(&state.paths, &id).join("logs").join("latest.log");
+    let Ok(bytes) = std::fs::read(path) else {
+        return Ok(Vec::new());
+    };
+    let text = String::from_utf8_lossy(&bytes);
+    let lines: Vec<&str> = text.lines().collect();
+    let start = lines.len().saturating_sub(MAX_LINES);
+    Ok(lines[start..].iter().map(|l| l.to_string()).collect())
 }

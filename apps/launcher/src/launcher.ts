@@ -1,3 +1,5 @@
+import { t } from "./i18n";
+import { useApp } from "./store";
 import { create } from "zustand";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -20,7 +22,24 @@ export type Available =
   | { kind: "app"; update: AppUpdate }
   | { kind: "ui"; version: string };
 
+/** An update worth telling the player about. `instance` opens that instance's page. */
+export interface Alert {
+  key: string;
+  text: string;
+  action?: { label: string; run: "update" } | { label: string; instance: string };
+}
+
 const MAX_LOG_LINES = 5000;
+const SEEN_VERSION_KEY = "novex.seenVersion";
+const SELECTED_KEY = "novex.selectedInstance";
+
+function readSelected(): string | null {
+  try {
+    return localStorage.getItem(SELECTED_KEY);
+  } catch {
+    return null;
+  }
+}
 const IDLE: Status = { state: "idle" };
 
 interface LauncherState {
@@ -31,12 +50,18 @@ interface LauncherState {
   status: Record<string, Status>;
   logs: Record<string, string[]>;
   error: string | null;
+  alerts: Alert[];
+  dismissAlert: (key: string) => void;
+  checkContentUpdates: () => Promise<void>;
   /** Success messages, shown like errors but not in red. */
   notice: string | null;
   /** The modpack being installed, if any. */
   pack: PackProgress | null;
+  /** Instance shown on Home; may name a deleted instance, so read it via `selectedInstance`. */
+  selected: string | null;
   /** Instance that Browse installs into. */
   browseTarget: string | null;
+  /** Instance whose page is open on the Instances screen. */
   contentFor: string | null;
   available: Available | null;
   /** Bytes downloaded while an update installs; `null` when idle. */
@@ -57,6 +82,7 @@ interface LauncherState {
   setError: (e: string | null) => void;
   setNotice: (n: string | null) => void;
   setBrowseTarget: (id: string | null) => void;
+  select: (id: string) => void;
   openContent: (id: string | null) => void;
   openAccounts: (open: boolean) => void;
   openNewInstance: (open: boolean) => void;
@@ -72,8 +98,35 @@ export const useLauncher = create<LauncherState>((set, get) => ({
   status: {},
   logs: {},
   error: null,
+  alerts: [],
+  dismissAlert: (key) => {
+    dismissed.add(key);
+    set((s) => ({ alerts: s.alerts.filter((a) => a.key !== key) }));
+  },
+  checkContentUpdates: async () => {
+    for (const inst of get().instances) {
+      const [content, client] = await Promise.all([
+        api.contentUpdates(inst.id).catch(() => []),
+        api.clientStatus(inst.id).catch(() => null),
+      ]);
+      const count = content.length + (client?.outdated ? 1 : 0);
+      // Keyed by what's new, so a dismissed alert returns only when more updates appear.
+      const key = `content/${inst.id}/${content.map((u) => u.versionId).sort().join()}/${!!client?.outdated}`;
+      const text = t(count === 1 ? "1 update for {name}." : "{count} updates for {name}.", { count, name: inst.name });
+      set((s) => {
+        const others = s.alerts.filter((a) => !a.key.startsWith(`content/${inst.id}/`));
+        return {
+          alerts:
+            count && !dismissed.has(key)
+              ? [...others, { key, text, action: { label: t("View"), instance: inst.id } }]
+              : others,
+        };
+      });
+    }
+  },
   notice: null,
   pack: null,
+  selected: readSelected(),
   browseTarget: null,
   contentFor: null,
   available: null,
@@ -110,7 +163,10 @@ export const useLauncher = create<LauncherState>((set, get) => ({
     set((s) => ({
       status: { ...s.status, [id]: { state: "launching", stage: "Starting", done: 0, total: 0 } },
       logs: { ...s.logs, [id]: [] },
+      // Show the instance's live page while it starts.
+      contentFor: id,
     }));
+    useApp.getState().setScreen("instances");
     try {
       await api.launch(id);
       set((s) => ({ status: { ...s.status, [id]: { state: "running" } } }));
@@ -171,13 +227,17 @@ export const useLauncher = create<LauncherState>((set, get) => ({
     try {
       // A new app release beats an interface-only update.
       const app = await api.checkAppUpdate();
-      if (app) return set({ available: { kind: "app", update: app } });
+      if (app) {
+        set({ available: { kind: "app", update: app } });
+        return notifyUpdate(t("Novex {version} is available.", { version: app.version }), `app/${app.version}`);
+      }
       const ui = await api.checkUiUpdate().catch((e) => {
         // A missing interface channel is normal; only report it when asked.
         if (manual) throw e;
         return null;
       });
       set({ available: ui ? { kind: "ui", version: ui.version } : null });
+      if (ui) notifyUpdate(t("A new interface ({version}) is available.", { version: ui.version }), `ui/${ui.version}`);
       if (manual && !ui) set({ notice: "Novex is up to date." });
     } catch (e) {
       if (manual) set({ error: errorText(e) });
@@ -204,12 +264,56 @@ export const useLauncher = create<LauncherState>((set, get) => ({
   setError: (error) => set({ error }),
   setNotice: (notice) => set({ notice }),
   setBrowseTarget: (browseTarget) => set({ browseTarget }),
+  select: (selected) => {
+    try {
+      localStorage.setItem(SELECTED_KEY, selected);
+    } catch {
+      // Non-fatal: Home just falls back to the last played instance.
+    }
+    set({ selected });
+  },
   openContent: (contentFor) => set({ contentFor }),
   openAccounts: (accountsOpen) => set({ accountsOpen }),
   openNewInstance: (newInstanceOpen) => set({ newInstanceOpen }),
   openLogs: (logsFor) => set({ logsFor }),
   openInstanceSettings: (settingsFor) => set({ settingsFor }),
 }));
+
+const UPDATE_CHECK_MS = 6 * 60 * 60 * 1000;
+const dismissed = new Set<string>();
+
+function notifyUpdate(text: string, key: string) {
+  if (dismissed.has(key)) return;
+  useLauncher.setState((s) => ({
+    alerts: [
+      ...s.alerts.filter((a) => a.key.startsWith("content/")),
+      { key, text, action: { label: t("Update"), run: "update" } },
+    ],
+  }));
+}
+
+/** Says so once after the launcher or its interface changed version. */
+async function announceUpdated() {
+  const info = await api.updateInfo().catch(() => null);
+  if (!info) return;
+  const version = info.uiVersion ?? info.appVersion;
+  try {
+    const seen = localStorage.getItem(SEEN_VERSION_KEY);
+    localStorage.setItem(SEEN_VERSION_KEY, version);
+    if (seen && seen !== version) useLauncher.setState({ notice: t("Novex updated to {version}.", { version }) });
+  } catch {
+    // Storage can be unavailable; the message just doesn't show.
+  }
+}
+
+/** Installs any update when the launcher opens, unless a game is already running. */
+async function installAtStartup() {
+  const { checkForUpdates, applyUpdate } = useLauncher.getState();
+  await checkForUpdates();
+  const { available, status, pack } = useLauncher.getState();
+  const busy = pack !== null || Object.values(status).some((s) => s.state === "running" || s.state === "launching");
+  if (available && !busy) await applyUpdate();
+}
 
 function finishPack({ instance, skipped }: { instance: Instance; skipped: string[] }) {
   useLauncher.setState({
@@ -218,6 +322,10 @@ function finishPack({ instance, skipped }: { instance: Instance; skipped: string
       : `${instance.name} is installed and ready to play.`,
   });
 }
+
+/** The instance Home shows: the chosen one, else the most recently played. */
+export const selectedInstance = (s: Pick<LauncherState, "instances" | "selected">): Instance | undefined =>
+  s.instances.find((i) => i.id === s.selected) ?? s.instances[0];
 
 export const statusOf = (s: Record<string, Status>, id: string): Status => s[id] ?? IDLE;
 
@@ -282,5 +390,14 @@ export async function initLauncher() {
   }));
 
   const settings = await api.settings().catch(() => null);
-  if (settings?.autoUpdate) useLauncher.getState().checkForUpdates();
+  void announceUpdated();
+  const { checkForUpdates, checkContentUpdates } = useLauncher.getState();
+  if (settings?.autoUpdate) void installAtStartup();
+  else void checkForUpdates();
+  void checkContentUpdates();
+  // For a launcher left open: this only notifies, so it never restarts mid-use.
+  setInterval(() => {
+    void checkForUpdates();
+    void checkContentUpdates();
+  }, UPDATE_CHECK_MS);
 }

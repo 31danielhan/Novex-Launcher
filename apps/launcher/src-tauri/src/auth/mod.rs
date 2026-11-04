@@ -100,13 +100,16 @@ pub async fn account_add_offline(state: State<'_, AppState>, name: String) -> Re
             "Sign in with a Microsoft account that owns Minecraft first. Then you can add offline accounts.",
         ));
     }
-    if store
+    if let Some(existing) = store
         .data
         .accounts
         .iter()
-        .any(|a| a.account.uuid == account.uuid && a.account.kind == AccountKind::Microsoft)
+        .find(|a| a.account.name.eq_ignore_ascii_case(&account.name))
     {
-        return Err(msg("That name belongs to your Microsoft account."));
+        return Err(msg(match existing.account.kind {
+            AccountKind::Microsoft => "That name belongs to your Microsoft account.",
+            AccountKind::Offline => "You already have an offline account with that name.",
+        }));
     }
     store.upsert(StoredAccount {
         account: account.clone(),

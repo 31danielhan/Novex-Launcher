@@ -1,7 +1,8 @@
 name: Release
 
-# Push a tag like v0.1.0 to build installers for every platform into a draft GitHub Release.
-# Publishing the draft makes it "latest", which is where installed apps look for updates.
+# Push a tag like v0.2.0 to build installers for every platform. Once they've all built, the
+# release is published as "latest", which is where installed apps look for updates. The tag must
+# match the version in tauri.conf.json, or installed apps wouldn't see anything newer.
 on:
   push:
     tags: ["v*"]
@@ -47,6 +48,16 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check the version matches the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          version="$(node -p "require('./apps/launcher/src-tauri/tauri.conf.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match version $version in tauri.conf.json."
+            exit 1
+          fi
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
@@ -104,11 +115,6 @@ jobs:
             echo "::warning::TAURI_SIGNING_PRIVATE_KEY isn't set, so this release can't update existing installs."
           fi
 
-      - name: Release links
-        shell: bash
-        run: |
-          echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
-          echo "DOWNLOAD=https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME" >> "$GITHUB_ENV"
 
       - uses: tauri-apps/tauri-action@v0
         env:
@@ -120,22 +126,6 @@ jobs:
           projectPath: apps/launcher
           tagName: ${{ github.ref_name }}
           releaseName: Novex Launcher ${{ github.ref_name }}
-          releaseBody: |
-            ## Download
-
-            | Platform | File |
-            | --- | --- |
-            | **Windows** (most PCs) | [Novex-Launcher_${{ env.VERSION }}_windows_x64-setup.exe](${{ env.DOWNLOAD }}/Novex-Launcher_${{ env.VERSION }}_windows_x64-setup.exe) |
-            | Windows on ARM | [Novex-Launcher_${{ env.VERSION }}_windows_arm64-setup.exe](${{ env.DOWNLOAD }}/Novex-Launcher_${{ env.VERSION }}_windows_arm64-setup.exe) |
-            | **macOS** (Apple silicon and Intel) | [Novex-Launcher_${{ env.VERSION }}_macos_universal.dmg](${{ env.DOWNLOAD }}/Novex-Launcher_${{ env.VERSION }}_macos_universal.dmg) |
-            | **Linux** (any distro) | [AppImage x64](${{ env.DOWNLOAD }}/Novex-Launcher_${{ env.VERSION }}_linux_amd64.AppImage) · [AppImage ARM64](${{ env.DOWNLOAD }}/Novex-Launcher_${{ env.VERSION }}_linux_aarch64.AppImage) |
-            | Debian / Ubuntu | [.deb x64](${{ env.DOWNLOAD }}/Novex-Launcher_${{ env.VERSION }}_linux_amd64.deb) · [.deb ARM64](${{ env.DOWNLOAD }}/Novex-Launcher_${{ env.VERSION }}_linux_arm64.deb) |
-            | Fedora / openSUSE | [.rpm x64](${{ env.DOWNLOAD }}/Novex-Launcher_${{ env.VERSION }}_linux_x86_64.rpm) · [.rpm ARM64](${{ env.DOWNLOAD }}/Novex-Launcher_${{ env.VERSION }}_linux_aarch64.rpm) |
-
-            On macOS, if the first launch is blocked, right-click the app and choose **Open**.
-            Already installed? Novex updates itself, so there's nothing to download.
-
-            <sub>The `.sig`, `.app.tar.gz` and `latest.json` files are used by the built-in updater.</sub>
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }} ${{ env.UPDATER_ARGS }}
@@ -143,3 +133,27 @@ jobs:
           updaterJsonPreferNsis: true
           # Files sort by OS, e.g. Novex-Launcher_0.1.0_windows_x64-setup.exe.
           assetNamePattern: Novex-Launcher_[version]_${{ matrix.os }}_[arch][setup][ext]
+
+  # Only after every platform built, so "latest" never points at a release missing one.
+  publish:
+    name: Publish
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The download table goes above any notes written on GitHub. Updates read their signatures
+      # from latest.json, so the .sig files are removed to leave a short list of downloads.
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          download="https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME"
+          sed -e "s|{version}|$version|g" -e "s|{download}|$download|g" .github/release-downloads.md > notes.md
+          echo >> notes.md
+          gh release view "$GITHUB_REF_NAME" --json body -q .body >> notes.md
+          gh release edit "$GITHUB_REF_NAME" --notes-file notes.md --draft=false --latest
+          gh release view "$GITHUB_REF_NAME" --json assets -q '.assets[].name' | grep '\.sig$' |
+            xargs -r -n1 gh release delete-asset "$GITHUB_REF_NAME" -y

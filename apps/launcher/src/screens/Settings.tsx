@@ -1,10 +1,12 @@
+import { t } from "../i18n";
 import { useEffect, useState, type ReactNode } from "react";
-import { useApp, type ThemePref } from "../store";
+import { palettes, useApp, type ThemePref } from "../store";
+import { languages, type LanguagePref } from "../i18n";
 import { useLauncher } from "../launcher";
 import { api, errorText, inTauri, type Settings, type UpdateInfo } from "../lib/api";
 import { osLabel, useSystemInfo } from "../lib/system";
 import { inputClass } from "../components/Dialog";
-import { Button, Card, Segmented, Toggle } from "../components/ui";
+import { Button, Card, cx, Segmented, Toggle } from "../components/ui";
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
@@ -19,7 +21,7 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 }
 
 /** Global settings, loaded once and shared by every section so saves don't overwrite each other. */
-function useSettings() {
+export function useSettings() {
   const setError = useLauncher((s) => s.setError);
   const [s, setS] = useState<Settings | null>(null);
 
@@ -44,7 +46,7 @@ function JavaSettings({ s, setS, save }: SettingsProps) {
   if (!s) {
     return (
       <Card className="mb-8">
-        <Row label="Java" hint="Available in the desktop app.">
+        <Row label={t("Java")} hint={t("Available in the desktop app.")}>
           —
         </Row>
       </Card>
@@ -54,7 +56,7 @@ function JavaSettings({ s, setS, save }: SettingsProps) {
   const gb = (s.maxMemoryMb / 1024).toFixed(1).replace(/\.0$/, "");
   return (
     <Card className="mb-8">
-      <Row label="Memory" hint="Maximum RAM for the game. 4–6 GB suits most vanilla play.">
+      <Row label={t("Memory")} hint={t("Maximum RAM for the game. 4–6 GB suits most vanilla play.")}>
         <div className="flex items-center gap-3">
           <input
             type="range"
@@ -66,21 +68,21 @@ function JavaSettings({ s, setS, save }: SettingsProps) {
             onPointerUp={() => save(s)}
             onKeyUp={() => save(s)}
             className="w-40 accent-[rgb(var(--accent))]"
-            aria-label="Maximum memory"
+            aria-label={t("Maximum memory")}
           />
           <span className="w-12 text-right font-medium text-fg">{gb} GB</span>
         </div>
       </Row>
-      <Row label="Java executable" hint="Leave empty to use the Java that Novex downloads.">
+      <Row label={t("Java executable")} hint={t("Leave empty to use the Java that Novex downloads.")}>
         <input
           defaultValue={s.javaPath ?? ""}
           onBlur={(e) => e.target.value !== (s.javaPath ?? "") && save({ ...s, javaPath: e.target.value })}
-          placeholder="Automatic"
+          placeholder={t("Automatic")}
           className={`${inputClass} w-64`}
           spellCheck={false}
         />
       </Row>
-      <Row label="JVM arguments" hint="Extra flags passed to Java.">
+      <Row label={t("JVM arguments")} hint={t("Extra flags passed to Java.")}>
         <input
           defaultValue={s.jvmArgs}
           onBlur={(e) => e.target.value !== s.jvmArgs && save({ ...s, jvmArgs: e.target.value })}
@@ -88,6 +90,41 @@ function JavaSettings({ s, setS, save }: SettingsProps) {
           className={`${inputClass} w-64 font-mono`}
           spellCheck={false}
         />
+      </Row>
+    </Card>
+  );
+}
+
+function ContentSources({ s, save }: SettingsProps) {
+  const [shown, setShown] = useState(false);
+  if (!s) return null;
+  return (
+    <Card className="mb-8">
+      <Row label={t("Modrinth")} hint={t("Works without setup.")}>
+        <span className="text-success">{t("Ready")}</span>
+      </Row>
+      <Row
+        label={t("CurseForge API key")}
+        hint={t("Create a free key at console.curseforge.com, then paste it here.")}
+      >
+        <div className="flex items-center gap-2">
+          <input
+            type={shown ? "text" : "password"}
+            defaultValue={s.curseforgeApiKey ?? ""}
+            onBlur={(e) =>
+              e.target.value.trim() !== (s.curseforgeApiKey ?? "") &&
+              save({ ...s, curseforgeApiKey: e.target.value })
+            }
+            placeholder={t("Not set")}
+            className={`${inputClass} w-64 font-mono`}
+            spellCheck={false}
+            autoComplete="off"
+            aria-label={t("CurseForge API key")}
+          />
+          <Button variant="ghost" className="h-9 px-3" onClick={() => setShown(!shown)}>
+            {t(shown ? "Hide" : "Show")}
+          </Button>
+        </div>
       </Row>
     </Card>
   );
@@ -105,7 +142,7 @@ function Updates({ s, save }: SettingsProps) {
   if (!info || !s) {
     return (
       <Card className="mb-8">
-        <Row label="Updates" hint="Available in the desktop app.">
+        <Row label={t("Updates")} hint={t("Available in the desktop app.")}>
           —
         </Row>
       </Card>
@@ -129,25 +166,25 @@ function Updates({ s, save }: SettingsProps) {
         label={`Novex ${info.appVersion}`}
         hint={
           !info.configured
-            ? "This build wasn't given a GitHub repository to update from."
+            ? t("This build wasn't given a GitHub repository to update from.")
             : available
               ? available.kind === "app"
                 ? `Version ${available.update.version} is available.`
                 : `A new interface (${available.version}) is available.`
-              : "Updates come from GitHub and are checked against Novex's signing key."
+              : t("Updates come from GitHub and are checked against Novex's signing key.")
         }
       >
         {available ? (
           <Button variant="primary" onClick={applyUpdate} disabled={!!updating}>
-            {available.kind === "app" ? "Update and restart" : "Update interface"}
+            {t(available.kind === "app" ? "Update and restart" : "Update interface")}
           </Button>
         ) : (
           <Button onClick={check} disabled={checking || !info.configured}>
-            {checking ? "Checking…" : "Check for updates"}
+            {t(checking ? "Checking…" : "Check for updates")}
           </Button>
         )}
       </Row>
-      <Row label="Interface" hint="Small fixes can arrive without reinstalling. They need the same signing key.">
+      <Row label={t("Interface")} hint={t("Small fixes can arrive without reinstalling. They need the same signing key.")}>
         {info.uiVersion ? (
           <span className="flex items-center gap-3">
             {info.uiVersion} (downloaded)
@@ -156,12 +193,12 @@ function Updates({ s, save }: SettingsProps) {
             </Button>
           </span>
         ) : (
-          "Built in"
+          t("Built in")
         )}
       </Row>
-      <Row label="Check automatically" hint="Look for updates each time Novex starts.">
+      <Row label={t("Update automatically")} hint={t("Install updates each time Novex starts, unless a game is running.")}>
         <Toggle
-          label="Check for updates automatically"
+          label={t("Update automatically")}
           checked={s.autoUpdate}
           disabled={!info.configured}
           onChange={(autoUpdate) => save({ ...s, autoUpdate })}
@@ -172,7 +209,7 @@ function Updates({ s, save }: SettingsProps) {
 }
 
 export function SettingsScreen() {
-  const { theme, setTheme } = useApp();
+  const { theme, setTheme, palette, setPalette, language, setLanguage } = useApp();
   const settings = useSettings();
   const { accounts, activeAccount, openAccounts } = useLauncher();
   const info = useSystemInfo();
@@ -180,41 +217,81 @@ export function SettingsScreen() {
 
   return (
     <>
-      <h2 className="mb-2 px-1 text-[13px] font-semibold">Account</h2>
+      <h2 className="display mb-2 px-1 text-[16px] font-semibold">{t("Account")}</h2>
       <Card className="mb-8">
-        <Row label={active ? active.name : "Not signed in"} hint={active ? "Playing as this account" : undefined}>
-          <Button onClick={() => openAccounts(true)}>{active ? "Manage" : "Sign in"}</Button>
+        <Row label={active ? active.name : t("Not signed in")} hint={active ? t("Playing as this account") : undefined}>
+          <Button onClick={() => openAccounts(true)}>{t(active ? "Manage" : "Sign in")}</Button>
         </Row>
       </Card>
 
-      <h2 className="mb-2 px-1 text-[13px] font-semibold">Java</h2>
+      <h2 className="display mb-2 px-1 text-[16px] font-semibold">{t("Java")}</h2>
       <JavaSettings {...settings} />
 
-      <h2 className="mb-2 px-1 text-[13px] font-semibold">Updates</h2>
+      <h2 className="display mb-2 px-1 text-[16px] font-semibold">{t("Updates")}</h2>
       <Updates {...settings} />
 
-      <h2 className="mb-2 px-1 text-[13px] font-semibold">Appearance</h2>
+      <h2 className="display mb-2 px-1 text-[16px] font-semibold">{t("Content sources")}</h2>
+      <ContentSources {...settings} />
+
+      <h2 className="display mb-2 px-1 text-[16px] font-semibold">{t("Appearance")}</h2>
       <Card className="mb-8">
-        <Row label="Theme">
+        <Row label={t("Theme")} hint={t("PCL and Prism are flat; the others use liquid-glass panels.")}>
+          <div className="flex gap-2">
+            {palettes.map((p) => (
+              <button
+                key={p.value}
+                onClick={() => setPalette(p.value)}
+                aria-pressed={palette === p.value}
+                title={p.label}
+                className="group flex w-14 flex-col items-center gap-1.5 text-[11px]"
+              >
+                <span
+                  className={cx(
+                    "slot h-9 w-9 rounded-lg ring-offset-2 ring-offset-surface transition duration-200 group-hover:scale-110",
+                    palette === p.value ? "ring-2 ring-accent" : "ring-1 ring-fg/10 hover:ring-fg/30",
+                  )}
+                  style={{ background: p.swatch }}
+                />
+                <span className={palette === p.value ? "text-fg" : ""}>{p.label}</span>
+              </button>
+            ))}
+          </div>
+        </Row>
+        <Row label={t("Mode")}>
           <Segmented<ThemePref>
             value={theme}
             onChange={setTheme}
             options={[
-              { value: "dark", label: "Dark" },
-              { value: "light", label: "Light" },
-              { value: "system", label: "System" },
+              { value: "dark", label: t("Dark") },
+              { value: "light", label: t("Light theme") },
+              { value: "system", label: t("System") },
             ]}
           />
         </Row>
+        <Row label={t("Language")} hint={t("Changes the launcher's language. Minecraft keeps its own language setting.")}>
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value as LanguagePref)}
+            aria-label={t("Language")}
+            className={`${inputClass} w-44 cursor-pointer text-fg`}
+          >
+            <option value="system">{t("Match system")}</option>
+            {languages.map((l) => (
+              <option key={l.value} value={l.value}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </Row>
       </Card>
 
-      <h2 className="mb-2 px-1 text-[13px] font-semibold">About</h2>
+      <h2 className="display mb-2 px-1 text-[16px] font-semibold">{t("About")}</h2>
       <Card>
-        <Row label="Version">{info?.appVersion ?? "—"}</Row>
-        <Row label="Platform">
-          {info ? `${osLabel[info.os] ?? info.os} · ${info.arch}` : "Browser preview"}
+        <Row label={t("Version")}>{info?.appVersion ?? "—"}</Row>
+        <Row label={t("Platform")}>
+          {info ? `${osLabel[info.os] ?? info.os} · ${info.arch}` : t("Browser preview")}
         </Row>
-        <Row label="Data folder" hint="Instances, Java runtimes and settings live here.">
+        <Row label={t("Data folder")} hint={t("Instances, Java runtimes and settings live here.")}>
           <span className="block max-w-xs truncate font-mono text-[12px]" title={info?.dataDir}>
             {info?.dataDir ?? "—"}
           </span>

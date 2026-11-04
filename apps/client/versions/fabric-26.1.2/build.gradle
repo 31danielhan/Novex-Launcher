@@ -1,0 +1,57 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+repositories {
+	// Sodium, only for testing compatibility in the dev client.
+	maven {
+		url = "https://api.modrinth.com/maven"
+		content { includeGroup "maven.modrinth" }
+	}
+}
+
+// HUD logic shared by every version lives in ../../core.
+sourceSets.main.java.srcDir "../../core/src"
+
+base {
+	archivesName = "novex-client-fabric-26.1.2"
+}
+
+dependencies {
+	// To change the versions see the gradle.properties file
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	// -PnoSodium leaves it out, for versions where Sodium and the test screenshots clash.
+	if (!project.hasProperty("noSodium")) runtimeOnly "maven.modrinth:sodium:${project.sodium_version}"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+// Client game tests (./gradlew runClientGameTest): open a world with Sodium and screenshot the HUD.
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "novex-client-gametest"
+		enableGameTests = false
+		enableClientGameTests = true
+		eula = true
+	}
+}

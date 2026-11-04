@@ -1,8 +1,10 @@
 pub mod auth;
+pub mod client;
 pub mod content;
 pub mod downloads;
 pub mod error;
 pub mod game;
+pub mod game_options;
 pub mod instances;
 pub mod java;
 pub mod loaders;
@@ -24,6 +26,8 @@ pub struct AppState {
     pub auth_cancel: AtomicBool,
     /// Running (or launching) instances; the sender stops the game.
     pub running: Mutex<HashMap<String, Option<oneshot::Sender<()>>>>,
+    /// Process numbers for running games.
+    pub monitor: game::stats::Monitor,
     /// The downloaded interface in use, if any.
     pub ui: update::ui::UiState,
 }
@@ -66,6 +70,7 @@ pub fn run() {
                 settings: Mutex::new(settings::Settings::load(&paths)),
                 auth_cancel: AtomicBool::new(false),
                 running: Mutex::new(HashMap::new()),
+                monitor: Default::default(),
                 paths,
             });
             Ok(())
@@ -84,6 +89,10 @@ pub fn run() {
             game::launch_instance,
             game::kill_instance,
             game::running_instances,
+            game::stats::instance_stats,
+            game::skin::account_skin,
+            game_options::game_template_set,
+            game_options::game_template_clear,
             instances::instances_list,
             instances::instance_create,
             instances::instance_update,
@@ -91,13 +100,18 @@ pub fn run() {
             instances::instance_delete,
             loaders::loader_versions,
             instances::instance_folder,
+            instances::instance_latest_log,
             settings::settings_get,
             settings::settings_set,
+            client::client_status,
+            client::client_set_enabled,
+            client::client_update,
             content::content_sources,
             content::content_search,
             content::content_versions,
             content::content_install,
             content::content_list,
+            content::content_updates,
             content::content_set_enabled,
             content::content_remove,
             content::modpack_install,

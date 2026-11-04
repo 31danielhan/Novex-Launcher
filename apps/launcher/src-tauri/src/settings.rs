@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::error::Result;
+use crate::game_options::{GameOptions, TemplateInfo};
 use crate::platform::Paths;
 use crate::AppState;
 
@@ -14,8 +15,20 @@ pub struct Settings {
     /// Overrides the managed runtime when set.
     pub java_path: Option<String>,
     pub jvm_args: String,
-    /// Check GitHub for launcher and interface updates at startup.
+    /// Install launcher and interface updates from GitHub at startup.
     pub auto_update: bool,
+    /// CurseForge API key from console.curseforge.com.
+    pub curseforge_api_key: Option<String>,
+    /// Game settings written into every instance before it launches.
+    pub game_options: GameOptions,
+    /// The 1.8 page of Game settings: wins over `game_options` on versions before 1.9.
+    pub game_options_legacy: GameOptions,
+    /// Novex Client settings written into every instance that has it, before it launches.
+    pub client_options: GameOptions,
+    /// The 1.8 page of the client settings: wins over `client_options` on versions before 1.9.
+    pub client_options_legacy: GameOptions,
+    /// Set up new instances from this instance's settings (see game_options).
+    pub template: Option<TemplateInfo>,
 }
 
 impl Default for Settings {
@@ -25,19 +38,27 @@ impl Default for Settings {
             java_path: None,
             jvm_args: String::new(),
             auto_update: true,
+            curseforge_api_key: None,
+            game_options: GameOptions::default(),
+            game_options_legacy: GameOptions::default(),
+            client_options: GameOptions::default(),
+            client_options_legacy: GameOptions::default(),
+            template: None,
         }
     }
 }
 
 impl Settings {
     pub fn load(paths: &Paths) -> Self {
-        std::fs::read(paths.root.join("settings.json"))
+        let s: Self = std::fs::read(paths.root.join("settings.json"))
             .ok()
             .and_then(|b| serde_json::from_slice(&b).ok())
-            .unwrap_or_default()
+            .unwrap_or_default();
+        crate::content::curseforge::set_saved_key(s.curseforge_api_key.clone());
+        s
     }
 
-    fn save(&self, paths: &Paths) -> Result<()> {
+    pub(crate) fn save(&self, paths: &Paths) -> Result<()> {
         std::fs::create_dir_all(&paths.root)?;
         std::fs::write(
             paths.root.join("settings.json"),
@@ -57,6 +78,11 @@ pub async fn settings_set(state: State<'_, AppState>, settings: Settings) -> Res
     let mut s = settings;
     s.max_memory_mb = s.max_memory_mb.clamp(512, 65536);
     s.java_path = s.java_path.filter(|p| !p.trim().is_empty());
+    s.curseforge_api_key = s
+        .curseforge_api_key
+        .map(|k| k.trim().to_string())
+        .filter(|k| !k.is_empty());
+    crate::content::curseforge::set_saved_key(s.curseforge_api_key.clone());
     s.save(&state.paths)?;
     *state.settings.lock().await = s.clone();
     Ok(s)
