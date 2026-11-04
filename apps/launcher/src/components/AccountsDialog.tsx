@@ -10,7 +10,7 @@ import { Badge, Button, cx } from "./ui";
 function uuidHash(uuid: string): number {
   const hex = uuid.replace(/-/g, "");
   const hilo = BigInt(`0x${hex.slice(0, 16)}`) ^ BigInt(`0x${hex.slice(16, 32)}`);
-  return Number(BigInt.asIntN(32, (hilo >> 32n) ^ hilo));
+  return Number(BigInt.asIntN(32, (hilo >> BigInt(32)) ^ hilo));
 }
 
 /** Head image: the real skin for Microsoft accounts, Steve or Alex for offline ones. */
