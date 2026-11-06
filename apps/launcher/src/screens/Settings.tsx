@@ -296,6 +296,17 @@ export function SettingsScreen() {
             {info?.dataDir ?? "—"}
           </span>
         </Row>
+        <Row
+          label={t("Backgrounds folder")}
+          hint={t("Your own images for instance backgrounds. Name them by version, like 1.21.png or 26.jpg.")}
+        >
+          <Button
+            variant="subtle"
+            onClick={() => api.backgroundsFolder().then(api.openPath).catch(() => {})}
+          >
+            {t("Open folder")}
+          </Button>
+        </Row>
         <div className="px-4 py-3 text-[12px] text-muted">
           <p className="mb-1 font-medium text-fg">{t("Image credits")}</p>
           <p className="select-text">

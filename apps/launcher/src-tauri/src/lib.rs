@@ -1,4 +1,5 @@
 pub mod auth;
+mod backgrounds;
 pub mod client;
 pub mod content;
 pub mod downloads;
@@ -103,6 +104,8 @@ pub fn run() {
             instances::instance_latest_log,
             settings::settings_get,
             settings::settings_set,
+            backgrounds::background_get,
+            backgrounds::backgrounds_folder,
             client::client_status,
             client::client_set_enabled,
             client::client_update,

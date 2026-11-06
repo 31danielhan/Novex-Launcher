@@ -244,6 +244,8 @@ export const api = {
     call<string>("instance_folder", { id, sub: sub ?? null }),
   latestLog: (id: string) => call<string[]>("instance_latest_log", { id }),
   openPath: (path: string) => call<void>("open_path", { path }),
+  background: (key: string) => call<string | null>("background_get", { key }),
+  backgroundsFolder: () => call<string>("backgrounds_folder"),
 
   launch: (id: string) => call<void>("launch_instance", { id }),
   kill: (id: string) => call<void>("kill_instance", { id }),
