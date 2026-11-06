@@ -65,7 +65,7 @@ public final class MotionBlur {
 		float fov = NovexCore.zooming ? fovDeg / NovexCore.config.zoomFactor : fovDeg;
 		float tanHalf = (float) Math.tan(Math.toRadians(fov) / 2);
 		float amount = NovexCore.config.motionBlurStrength / 100f;
-		float gain = 0.3f + 1.4f * amount;
+		float gain = 0.05f + 1.9f * amount;
 
 		// Position only changes 20 times a second, so speed is measured from one change to the next.
 		if (Double.isNaN(lastX)) lastMoved = now;
@@ -86,10 +86,10 @@ public final class MotionBlur {
 
 		// Keeps some of the previous frame, the same amount per second at any frame rate.
 		float keep = dt >= 0.25f || Math.abs(dyaw) > 90 || Math.abs(dpitch) > 90
-				? 0f : Math.min(0.85f, (float) Math.exp(-Math.max(0f, dt) / (0.006f + 0.03f * amount)));
+				? 0f : Math.min(0.85f, (float) Math.exp(-Math.max(0f, dt) / (0.002f + 0.034f * amount)));
 
 		// Eased, so the extra blur doesn't cut off between swings. Same trail length at any frame rate.
-		float swingTarget = swinging && keep > 0f ? Math.min(0.85f, (float) Math.exp(-Math.max(0f, dt) / (0.02f + 0.03f * amount))) : 0f;
+		float swingTarget = swinging && keep > 0f ? Math.min(0.85f, (float) Math.exp(-Math.max(0f, dt) / (0.008f + 0.042f * amount))) : 0f;
 		swing = ease(swing, swingTarget, dt);
 
 		put(pixels, 0, yaw * gain / MAX_TURN);

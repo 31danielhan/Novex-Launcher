@@ -12,7 +12,8 @@ public enum Module {
 	TOGGLE_SPRINT("toggleSprint", "Toggle sprint", Category.GAMEPLAY, "Press sprint once to keep sprinting.", "minecraft:sugar"),
 	ZOOM("zoom", "Zoom", Category.GAMEPLAY, "Hold C to zoom in.", "minecraft:ender_eye"),
 	MOTION_BLUR("motionBlur", "Motion blur", Category.VISUAL, "Movement leaves a short trail.", "minecraft:ender_pearl"),
-	CAMERA_STABILIZE("cameraStabilize", "Camera stabilize", Category.VISUAL, "Smooths out shaky mouse movement.", "minecraft:feather"),
+	CAMERA_STABILIZE("cameraStabilize", "Camera stabilize", Category.VISUAL, "Smooths shaky mouse movement. Singleplayer only.", "minecraft:feather"),
+	FULLBRIGHT("fullbright", "Fullbright", Category.VISUAL, "See clearly in the dark.", "minecraft:torch"),
 	BLOCK_HIT("oldBlockHit", "1.7 block hit", Category.VISUAL, "Swing while blocking, like 1.7.", "minecraft:diamond_sword"),
 	OLD_EATING("oldEating", "1.7 eating", Category.VISUAL, "Eating and drinking swing like 1.7.", "minecraft:cooked_beef"),
 	DAMAGE_TILT("damageTilt", "Damage tilt", Category.VISUAL, "Camera tilts when you take damage.", "minecraft:redstone"),
@@ -33,9 +34,9 @@ public enum Module {
 	}
 
 	/** Modules every version supports. Adapters that do more add to this in NovexCore.modules. */
-	public static final Module[] BASE = {FPS, CPS, PING, COORDINATES, KEYSTROKES, ARMOR, EFFECTS, TOGGLE_SPRINT, ZOOM, CAMERA_STABILIZE};
+	public static final Module[] BASE = {FPS, CPS, PING, COORDINATES, KEYSTROKES, ARMOR, EFFECTS, TOGGLE_SPRINT, ZOOM, CAMERA_STABILIZE, FULLBRIGHT};
 	/** BASE plus motion blur, for versions with a motion blur shader. */
-	public static final Module[] WITH_BLUR = {FPS, CPS, PING, COORDINATES, KEYSTROKES, ARMOR, EFFECTS, TOGGLE_SPRINT, ZOOM, MOTION_BLUR, CAMERA_STABILIZE};
+	public static final Module[] WITH_BLUR = {FPS, CPS, PING, COORDINATES, KEYSTROKES, ARMOR, EFFECTS, TOGGLE_SPRINT, ZOOM, MOTION_BLUR, CAMERA_STABILIZE, FULLBRIGHT};
 
 	public final String key;
 	public final String label;
@@ -65,6 +66,7 @@ public enum Module {
 			case ZOOM: return c.zoom;
 			case MOTION_BLUR: return c.motionBlur;
 			case CAMERA_STABILIZE: return c.cameraStabilize;
+			case FULLBRIGHT: return c.fullbright;
 			case BLOCK_HIT: return c.oldBlockHit;
 			case OLD_EATING: return c.oldEating;
 			case DAMAGE_TILT: return c.damageTilt;
@@ -87,6 +89,7 @@ public enum Module {
 			case ZOOM: c.zoom = v; break;
 			case MOTION_BLUR: c.motionBlur = v; break;
 			case CAMERA_STABILIZE: c.cameraStabilize = v; break;
+			case FULLBRIGHT: c.fullbright = v; break;
 			case BLOCK_HIT: c.oldBlockHit = v; break;
 			case OLD_EATING: c.oldEating = v; break;
 			case DAMAGE_TILT: c.damageTilt = v; break;

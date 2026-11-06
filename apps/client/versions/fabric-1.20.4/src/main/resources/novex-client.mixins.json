@@ -2,7 +2,7 @@
 	"required": true,
 	"package": "dev.novex.client.mixin",
 	"compatibilityLevel": "JAVA_17",
-	"client": ["EntityTurnMixin", "PlayerInfoMixin", "CameraMixin", "GameRendererMixin", "MouseHandlerMixin"],
+	"client": ["FullbrightMixin", "EntityTurnMixin", "PlayerInfoMixin", "CameraMixin", "GameRendererMixin", "MouseHandlerMixin"],
 	"injectors": {
 		"defaultRequire": 1
 	}

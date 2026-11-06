@@ -63,6 +63,7 @@ const gameplay: OptionsPage = {
     { kind: "toggle", id: "zoom", label: "Zoom", def: true },
     { kind: "toggle", id: "motionBlur", label: "Motion blur", def: false },
     { kind: "toggle", id: "cameraStabilize", label: "Camera stabilize", def: false },
+    { kind: "toggle", id: "fullbright", label: "Fullbright", def: false },
   ],
 };
 

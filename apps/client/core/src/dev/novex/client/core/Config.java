@@ -51,6 +51,8 @@ public final class Config {
 	/** 0 to 100. */
 	public int motionBlurStrength = 50;
 
+	public boolean fullbright = false;
+
 	public boolean cameraStabilize = false;
 	/** 0 to 100. */
 	public int cameraStabilizeStrength = 50;
