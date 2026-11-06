@@ -8,7 +8,7 @@ import { api, describe, errorText, inTauri, type ClientStatus, type Instance, ty
 import { OptionTabs } from "./GameSettings";
 
 /** What installing the client adds with it, matching companions() in client.rs. */
-function companions(loader: LoaderKind) {
+export function companions(loader: LoaderKind) {
   if (loader === "fabric" || loader === "quilt") return t("Fabric API and Sodium");
   if (loader === "forge") return t("Embeddium where available");
   return t("Sodium where available");

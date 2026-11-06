@@ -118,7 +118,7 @@ public class HudGameTest implements FabricClientGameTest {
 			for (boolean blur : new boolean[] {false, true}) {
 				ctx.runOnClient(mc -> {
 					NovexCore.config.motionBlur = blur;
-					NovexCore.config.motionBlurLevel = 3;
+					NovexCore.config.motionBlurStrength = 100;
 					mc.player.setXRot(10f);
 				});
 				ctx.waitTicks(3);

@@ -2,12 +2,13 @@ package dev.novex.client.core;
 
 import java.util.ArrayDeque;
 
-/** Mouse presses in the last second, for the CPS readout. Only observes input. */
+/** Mouse presses in the last second, for the CPS readout. Only observes input, and tells the stabilizer to let go of held movement. */
 public final class Clicks {
 	private static final ArrayDeque<Long> LEFT = new ArrayDeque<Long>();
 	private static final ArrayDeque<Long> RIGHT = new ArrayDeque<Long>();
 
 	public static synchronized void press(int button) {
+		if (button == 0 || button == 1) Stabilizer.click();
 		if (button == 0) LEFT.add(System.currentTimeMillis());
 		else if (button == 1) RIGHT.add(System.currentTimeMillis());
 	}

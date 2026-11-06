@@ -21,3 +21,7 @@ Thumbs.db
 
 # local tooling
 .claude/launch.json
+
+# Background images for this computer only; never shipped.
+apps/launcher/src/assets/versions/local/*
+!apps/launcher/src/assets/versions/local/README.md

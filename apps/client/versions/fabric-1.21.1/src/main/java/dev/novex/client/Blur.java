@@ -21,7 +21,7 @@ public final class Blur {
 		Minecraft mc = Minecraft.getInstance();
 		// The texture must be registered before the chain loads, since the chain looks it up then.
 		if (NovexCore.config.motionBlur) MotionTexture.register();
-		int want = NovexCore.config.motionBlur && mc.level != null ? NovexCore.config.motionBlurLevel : 0;
+		int want = NovexCore.config.motionBlur && mc.level != null ? 1 : 0;
 		if (want != level) close();
 		if (want == 0 || failed) return;
 		RenderTarget main = mc.getMainRenderTarget();

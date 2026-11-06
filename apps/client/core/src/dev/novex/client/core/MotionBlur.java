@@ -9,20 +9,35 @@ package dev.novex.client.core;
  *
  * The texture is {@link #WIDTH}x1 grey pixels; value i is a 16-bit number split over pixels 2i (high
  * byte) and 2i + 1 (low byte), mapped from -1..1. Values: yaw change, pitch change (radians, over
- * {@link #MAX_TURN}), tan(vertical FOV / 2) over 4, aspect ratio over 4, strength over 2.
+ * {@link #MAX_TURN}), tan(vertical FOV / 2) over 4, aspect ratio over 4, walking blur, how much of the
+ * previous frame to keep, how much more to keep around the hand during a swing. That last one is what blurs things the camera turn can't describe, like the
+ * hand swinging; Fabric 1.21.4 and 1.21.5 can't keep a frame between renders, so they ignore it.
  */
 public final class MotionBlur {
-	public static final int WIDTH = 10;
+	public static final int WIDTH = 14;
 	private static final float MAX_TURN = 0.6f;
 	/** Blur as if the shutter were open for one 60 Hz frame, whatever the frame rate. */
 	private static final float SHUTTER = 1f / 60f;
-	private static final float[] STRENGTH = {0.6f, 0.9f, 1.25f};
+
+	private static final float EASE_SECONDS = 0.03f;
+	/** Slower easing as the turn slows, so the blur fades out when the camera stops. */
+	private static final float FADE_SECONDS = 0.12f;
+	/** Blocks per second that count as full walking blur. */
+	private static final float WALK_SPEED = 8f;
 
 	private static float lastYaw = Float.NaN, lastPitch;
+	private static float smoothYaw, smoothPitch;
 	private static long lastNanos;
+	private static double lastX = Double.NaN, lastY, lastZ;
+	private static long lastMoved;
+	private static float walk, walkTarget, swing;
+	private static final int[] pixels = new int[WIDTH], sent = new int[WIDTH];
 
-	/** Grey levels (0-255) for the texture's pixels this frame. Angles in degrees, as the game stores them. */
-	public static int[] frame(float yawDeg, float pitchDeg, float fovDeg, float aspect) {
+	/**
+	 * Grey levels (0-255) for the texture's pixels this frame, or null if they haven't changed and
+	 * there's nothing to upload. Angles in degrees, as the game stores them.
+	 */
+	public static int[] frame(float yawDeg, float pitchDeg, float fovDeg, float aspect, double x, double y, double z, boolean swinging) {
 		long now = System.nanoTime();
 		float dt = lastNanos == 0 ? SHUTTER : (now - lastNanos) / 1e9f;
 		lastNanos = now;
@@ -40,17 +55,58 @@ public final class MotionBlur {
 		float yaw = (float) Math.toRadians(dyaw) * scale, pitch = (float) Math.toRadians(dpitch) * scale;
 		if (Math.abs(dyaw) > 90 || Math.abs(dpitch) > 90) yaw = pitch = 0;
 
+		// Eases the turn between frames, so uneven mouse input and frame times don't make the blur flicker.
+		if (dt >= 0.25f || Math.abs(dyaw) > 90 || Math.abs(dpitch) > 90) smoothYaw = smoothPitch = 0;
+		smoothYaw = ease(smoothYaw, yaw, dt);
+		smoothPitch = ease(smoothPitch, pitch, dt);
+		yaw = smoothYaw;
+		pitch = smoothPitch;
+
 		float fov = NovexCore.zooming ? fovDeg / NovexCore.config.zoomFactor : fovDeg;
 		float tanHalf = (float) Math.tan(Math.toRadians(fov) / 2);
-		float strength = STRENGTH[Math.max(0, Math.min(2, NovexCore.config.motionBlurLevel - 1))];
+		float amount = NovexCore.config.motionBlurStrength / 100f;
+		float gain = 0.3f + 1.4f * amount;
 
-		int[] px = new int[WIDTH];
-		put(px, 0, yaw / MAX_TURN);
-		put(px, 1, pitch / MAX_TURN);
-		put(px, 2, tanHalf / 2f - 1f);
-		put(px, 3, aspect / 2f - 1f);
-		put(px, 4, strength - 1f);
-		return px;
+		// Position only changes 20 times a second, so speed is measured from one change to the next.
+		if (Double.isNaN(lastX)) lastMoved = now;
+		else if (x != lastX || y != lastY || z != lastZ) {
+			float seconds = Math.max(0.01f, (now - lastMoved) / 1e9f);
+			double rad = Math.toRadians(yawDeg), up = Math.toRadians(pitchDeg);
+			double forward = ((x - lastX) * -Math.sin(rad) + (z - lastZ) * Math.cos(rad)) * Math.cos(up) - (y - lastY) * Math.sin(up);
+			float speed = (float) Math.abs(forward) / seconds;
+			// Teleports aren't walking.
+			walkTarget = speed > 40f ? 0f : Math.min(1f, speed / WALK_SPEED * gain);
+			lastMoved = now;
+		} else if (now - lastMoved > 150_000_000L) walkTarget = 0f;
+		// Eased every frame, so the 20-a-second position updates don't show as steps in the blur.
+		walk += (walkTarget - walk) * (1f - (float) Math.exp(-Math.max(0f, dt) / 0.1f));
+		lastX = x;
+		lastY = y;
+		lastZ = z;
+
+		// Keeps some of the previous frame, the same amount per second at any frame rate.
+		float keep = dt >= 0.25f || Math.abs(dyaw) > 90 || Math.abs(dpitch) > 90
+				? 0f : Math.min(0.85f, (float) Math.exp(-Math.max(0f, dt) / (0.006f + 0.03f * amount)));
+
+		// Eased, so the extra blur doesn't cut off between swings. Same trail length at any frame rate.
+		float swingTarget = swinging && keep > 0f ? Math.min(0.85f, (float) Math.exp(-Math.max(0f, dt) / (0.02f + 0.03f * amount))) : 0f;
+		swing = ease(swing, swingTarget, dt);
+
+		put(pixels, 0, yaw * gain / MAX_TURN);
+		put(pixels, 1, pitch * gain / MAX_TURN);
+		put(pixels, 2, tanHalf / 2f - 1f);
+		put(pixels, 3, aspect / 2f - 1f);
+		put(pixels, 4, walk * 2f - 1f);
+		put(pixels, 5, keep * 2f - 1f);
+		put(pixels, 6, swing * 2f - 1f);
+		if (java.util.Arrays.equals(pixels, sent)) return null;
+		System.arraycopy(pixels, 0, sent, 0, WIDTH);
+		return pixels;
+	}
+
+	private static float ease(float from, float to, float dt) {
+		float time = Math.abs(to) < Math.abs(from) ? FADE_SECONDS : EASE_SECONDS;
+		return from + (to - from) * (1f - (float) Math.exp(-Math.max(0f, dt) / time));
 	}
 
 	/** A grey ARGB pixel. Grey keeps it the same in ARGB and ABGR, which versions disagree on. */

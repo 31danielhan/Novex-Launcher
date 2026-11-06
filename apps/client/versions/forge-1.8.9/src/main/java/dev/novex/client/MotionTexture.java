@@ -22,7 +22,8 @@ final class MotionTexture {
 		Minecraft mc = Minecraft.getMinecraft();
 		if (texture == null || mc.thePlayer == null) return;
 		float aspect = (float) mc.displayWidth / Math.max(1, mc.displayHeight);
-		int[] px = MotionBlur.frame(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch, mc.gameSettings.fovSetting, aspect);
+		int[] px = MotionBlur.frame(mc.thePlayer.rotationYaw, mc.thePlayer.rotationPitch, mc.gameSettings.fovSetting, aspect, mc.thePlayer.posX, mc.thePlayer.posY, mc.thePlayer.posZ, mc.thePlayer.isSwingInProgress || mc.thePlayer.isUsingItem());
+		if (px == null) return;
 		int[] data = texture.getTextureData();
 		for (int i = 0; i < px.length; i++) data[i] = MotionBlur.grey(px[i]);
 		texture.updateDynamicTexture();

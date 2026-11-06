@@ -107,7 +107,7 @@ public final class NovexClient {
 	 */
 	private static void motionBlur(Minecraft mc) {
 		EntityRenderer r = mc.entityRenderer;
-		int want = NovexCore.config.motionBlur && mc.theWorld != null ? NovexCore.config.motionBlurLevel : 0;
+		int want = NovexCore.config.motionBlur && mc.theWorld != null ? 1 : 0;
 		boolean ours = r.isShaderActive() && r.getShaderGroup() != null
 				&& r.getShaderGroup().getShaderGroupName().equals("novex_client:shaders/post/motion_blur.json");
 		if (want > 0 && !ours) {

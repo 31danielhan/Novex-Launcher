@@ -11,6 +11,7 @@ import { InstanceSettingsDialog } from "./components/InstanceSettingsDialog";
 import { progressLabel } from "./components/InstanceCard";
 import { cx } from "./components/ui";
 import { useApp, type Screen } from "./store";
+import { languages, resolveLanguage } from "./i18n";
 import { initLauncher, useLauncher } from "./launcher";
 import { HomeScreen } from "./screens/Home";
 import { InstancesScreen } from "./screens/Instances";
@@ -210,6 +211,46 @@ function Splash({ onDone }: { onDone: () => void }) {
   );
 }
 
+/** First launch: pick a language. It stays changeable in Settings. */
+function LanguagePicker() {
+  const setLanguage = useApp((s) => s.setLanguage);
+  const language = useApp((s) => s.language);
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem("novex.language") === null;
+    } catch {
+      return false;
+    }
+  });
+  if (!open) return null;
+  const current = resolveLanguage(language);
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-6">
+      <div className="glass hairline w-full max-w-md rounded-xl border bg-surface p-6 shadow-xl">
+        <h2 className="display text-[20px] font-semibold">{t("Choose your language")}</h2>
+        <p className="mb-4 mt-1 text-[13px] text-muted">{t("You can change this later in Settings.")}</p>
+        <div className="grid grid-cols-2 gap-2">
+          {languages.map((l) => (
+            <button
+              key={l.value}
+              onClick={() => {
+                setLanguage(l.value);
+                setOpen(false);
+              }}
+              className={cx(
+                "h-10 rounded-lg border px-3 text-left text-[13px] font-medium transition hover:bg-fg/5",
+                l.value === current ? "border-accent" : "hairline",
+              )}
+            >
+              {l.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const screen = useApp((s) => s.screen);
   // t() reads the language when called, so the shell remounts when it changes.
@@ -246,6 +287,7 @@ export default function App() {
       <NewInstanceDialog />
       <LogsDialog />
       <InstanceSettingsDialog />
+      {entered && <LanguagePicker />}
     </div>
   );
 }

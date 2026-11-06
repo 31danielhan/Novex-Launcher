@@ -19,6 +19,7 @@ import { selectedInstance, statusOf, useLauncher } from "../launcher";
 import { api, describe, errorText, timeAgo, type Instance, type InstanceFolder } from "../lib/api";
 import { Badge, Button, Card, cx } from "../components/ui";
 import { InstanceIcon, PlayButton, ProgressBar } from "../components/InstanceCard";
+import { ArtBanner } from "../components/VersionArt";
 import { lineClass } from "../components/LogsDialog";
 
 export function playTime(secs: number) {
@@ -144,6 +145,7 @@ function Hero({ inst }: { inst: Instance }) {
   return (
     // Raised above the log card, so the switcher's menu isn't covered by its glass layer.
     <Card className="relative z-10 p-5">
+      <ArtBanner version={inst.version} />
       <InstanceSwitcher current={inst} />
       <div className="mt-3 flex items-center gap-4">
         <InstanceIcon inst={inst} size={64} />
