@@ -1,21 +1,80 @@
 {
-    "targets": { "swap": {} },
+    "targets": {
+        "swap": {},
+        "history": {
+            "persistent": true
+        }
+    },
     "passes": [
         {
             "vertex_shader": "minecraft:post/blit",
             "fragment_shader": "novex-client:post/motion_blur",
             "inputs": [
-                { "sampler_name": "In", "target": "minecraft:main" },
-                { "sampler_name": "Motion", "location": "novex-client:motion", "width": 10, "height": 1, "bilinear": false }
+                {
+                    "sampler_name": "In",
+                    "target": "minecraft:main"
+                },
+                {
+                    "sampler_name": "Motion",
+                    "location": "novex-client:motion",
+                    "width": 14,
+                    "height": 1,
+                    "bilinear": false
+                },
+                {
+                    "sampler_name": "History",
+                    "target": "history"
+                }
             ],
             "output": "swap"
         },
         {
             "vertex_shader": "minecraft:post/blit",
             "fragment_shader": "minecraft:post/blit",
-            "inputs": [{ "sampler_name": "In", "target": "swap" }],
+            "inputs": [
+                {
+                    "sampler_name": "In",
+                    "target": "swap"
+                }
+            ],
             "uniforms": {
-                "BlitConfig": [{ "name": "ColorModulate", "type": "vec4", "value": [1.0, 1.0, 1.0, 1.0] }]
+                "BlitConfig": [
+                    {
+                        "name": "ColorModulate",
+                        "type": "vec4",
+                        "value": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    }
+                ]
+            },
+            "output": "history"
+        },
+        {
+            "vertex_shader": "minecraft:post/blit",
+            "fragment_shader": "minecraft:post/blit",
+            "inputs": [
+                {
+                    "sampler_name": "In",
+                    "target": "swap"
+                }
+            ],
+            "uniforms": {
+                "BlitConfig": [
+                    {
+                        "name": "ColorModulate",
+                        "type": "vec4",
+                        "value": [
+                            1.0,
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    }
+                ]
             },
             "output": "minecraft:main"
         }

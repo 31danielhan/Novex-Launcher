@@ -21,7 +21,8 @@ public final class MotionTexture {
 		}
 		if (mc.player == null) return;
 		float aspect = (float) mc.getWindow().getWidth() / Math.max(1, mc.getWindow().getHeight());
-		int[] px = MotionBlur.frame(mc.player.getYRot(), mc.player.getXRot(), mc.options.fov().get(), aspect);
+		int[] px = MotionBlur.frame(mc.player.getYRot(), mc.player.getXRot(), mc.options.fov().get(), aspect, mc.player.getX(), mc.player.getY(), mc.player.getZ(), mc.player.swinging || mc.player.isUsingItem());
+		if (px == null) return;
 		for (int i = 0; i < px.length; i++) texture.getPixels().setPixel(i, 0, MotionBlur.grey(px[i]));
 		texture.upload();
 	}

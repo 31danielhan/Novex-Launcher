@@ -48,8 +48,12 @@ public final class Config {
 	public float zoomFactor = 4f;
 
 	public boolean motionBlur = false;
-	/** 1 (light) to 3 (strong). */
-	public int motionBlurLevel = 2;
+	/** 0 to 100. */
+	public int motionBlurStrength = 50;
+
+	public boolean cameraStabilize = false;
+	/** 0 to 100. */
+	public int cameraStabilizeStrength = 50;
 
 	// 1.8.9 only.
 	public boolean oldBlockHit = true;
@@ -75,7 +79,8 @@ public final class Config {
 		if (c == null) c = new Config();
 		if (c.zoomFactor < 1f) c.zoomFactor = 4f;
 		if (c.hud == null) c.hud = new HashMap<String, Layout>();
-		c.motionBlurLevel = Math.max(1, Math.min(3, c.motionBlurLevel));
+		c.motionBlurStrength = Math.max(0, Math.min(100, c.motionBlurStrength));
+		c.cameraStabilizeStrength = Math.max(0, Math.min(100, c.cameraStabilizeStrength));
 		if (c.hudSize == null) c.hudSize = new HashMap<String, Float>();
 		c.hudPlateOpacity = Math.max(0, Math.min(100, c.hudPlateOpacity));
 		c.coordinatesDecimals = Math.max(0, Math.min(2, c.coordinatesDecimals));

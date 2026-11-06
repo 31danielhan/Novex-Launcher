@@ -1,18 +1,14 @@
 import { t } from "../i18n";
-import { useEffect, useState, type ReactNode } from "react";
-import {
-  FolderOpen,
-  Loader2,
-  Package,
-  Play,
-  ScrollText,
-  SlidersHorizontal,
-  Square,
-  Trash2,
-} from "lucide-react";
-import { api, describe, errorText, loaderLabels, timeAgo, type Instance } from "../lib/api";
+import { Loader2, Play, Square } from "lucide-react";
+import { describe, loaderLabels, timeAgo, type Instance } from "../lib/api";
 import { statusOf, useLauncher, type Status } from "../launcher";
 import { Button, Card, cx } from "./ui";
+import fabricIcon from "../assets/fabric.png";
+import forgeIcon from "../assets/forge.png";
+import neoforgeIcon from "../assets/neoforge.png";
+import quiltIcon from "../assets/quilt.svg";
+import vanillaIcon from "../assets/vanilla.svg";
+import { VersionArt } from "./VersionArt";
 
 // Soft gradient per loader, like product thumbnails.
 const loaderTint: Record<Instance["loader"], string> = {
@@ -21,6 +17,15 @@ const loaderTint: Record<Instance["loader"], string> = {
   quilt: "from-fuchsia-300 to-violet-200 text-fuchsia-900",
   forge: "from-slate-400 to-slate-200 text-slate-900",
   neoforge: "from-orange-300 to-rose-200 text-orange-900",
+};
+
+// Each loader's own logo. Forge's is pale, so it's darkened to show on its tile.
+const loaderIcon: Record<Instance["loader"], { src: string; className?: string }> = {
+  vanilla: { src: vanillaIcon, className: "[image-rendering:pixelated]" },
+  fabric: { src: fabricIcon, className: "[image-rendering:pixelated]" },
+  quilt: { src: quiltIcon },
+  forge: { src: forgeIcon, className: "brightness-[0.3]" },
+  neoforge: { src: neoforgeIcon, className: "[image-rendering:pixelated]" },
 };
 
 export function InstanceIcon({ inst, size = 44 }: { inst: Instance; size?: number }) {
@@ -35,12 +40,6 @@ export function InstanceIcon({ inst, size = 44 }: { inst: Instance; size?: numbe
       />
     );
   }
-  const text =
-    inst.loader === "vanilla"
-      ? inst.version.length > 6
-        ? "MC"
-        : inst.version
-      : loaderLabels[inst.loader].slice(0, 2);
   return (
     <div
       className={cx(
@@ -49,7 +48,13 @@ export function InstanceIcon({ inst, size = 44 }: { inst: Instance; size?: numbe
       )}
       style={{ width: size, height: size, fontSize: size * 0.25 }}
     >
-      {text}
+      <img
+        src={loaderIcon[inst.loader].src}
+        alt={loaderLabels[inst.loader]}
+        draggable={false}
+        className={cx("object-contain", loaderIcon[inst.loader].className)}
+        style={{ width: size * 0.66, height: size * 0.66 }}
+      />
     </div>
   );
 }
@@ -101,102 +106,33 @@ export function ProgressBar({ s }: { s: Status }) {
   );
 }
 
-function IconAction({
-  label,
-  onClick,
-  danger,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  danger?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className={cx(
-        "grid h-8 w-8 place-items-center rounded-md text-muted transition",
-        danger ? "hover:bg-danger/10 hover:text-danger" : "hover:bg-fg/5 hover:text-fg",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
 export function InstanceCard({ inst }: { inst: Instance }) {
-  const { status, openLogs, openInstanceSettings, openContent, refresh, setError } = useLauncher();
+  const { status, openContent } = useLauncher();
   const s = statusOf(status, inst.id);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
-  useEffect(() => {
-    if (!confirmDelete) return;
-    const t = setTimeout(() => setConfirmDelete(false), 3000);
-    return () => clearTimeout(t);
-  }, [confirmDelete]);
-
-  const openFolder = async () => {
-    try {
-      await api.openPath(await api.instanceFolder(inst.id));
-    } catch (e) {
-      setError(errorText(e));
-    }
-  };
-
-  const remove = async () => {
-    if (!confirmDelete) return setConfirmDelete(true);
-    try {
-      await api.deleteInstance(inst.id);
-      await refresh();
-    } catch (e) {
-      setError(errorText(e));
-    }
-  };
 
   return (
-    <Card className="lift-card group p-5">
-      <div className="flex items-start gap-3">
-        <button onClick={() => openContent(inst.id)} aria-label={`Open ${inst.name}`} className="shrink-0">
-          <InstanceIcon inst={inst} />
-        </button>
-        <div className="min-w-0 flex-1">
-          <button
-            onClick={() => openContent(inst.id)}
-            className="block max-w-full truncate text-left font-medium hover:underline"
-          >
-            {inst.name}
-          </button>
-          <p className="truncate text-[12px] text-muted">
-            {describe(inst)} ·{" "}
-            {s.state === "running" ? <span className="text-success">{t("Running")}</span> : timeAgo(inst.lastPlayed)}
+    <Card className="lift-card relative isolate flex h-52 flex-col justify-end overflow-hidden p-4">
+      <VersionArt version={inst.version} className="absolute inset-0 -z-10" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+      <button
+        onClick={() => openContent(inst.id)}
+        aria-label={`Open ${inst.name}`}
+        className="absolute inset-0"
+      />
+      <div className="pointer-events-none relative flex items-center gap-3">
+        <InstanceIcon inst={inst} size={40} />
+        <div className="min-w-0 flex-1 text-white [text-shadow:0_1px_2px_rgb(0_0_0/0.6)]">
+          <p className="truncate font-semibold">{inst.name}</p>
+          <p className="truncate text-[12px] text-white/80">
+            {describe(inst)} · {s.state === "running" ? t("Running") : timeAgo(inst.lastPlayed)}
           </p>
         </div>
-      </div>
-
-      <ProgressBar s={s} />
-
-      <div className="mt-4 flex items-center justify-between">
-        <PlayButton inst={inst} />
-        <div className="flex gap-0.5 opacity-60 transition group-hover:opacity-100">
-          <IconAction label={t("Mods and packs")} onClick={() => openContent(inst.id)}>
-            <Package size={15} />
-          </IconAction>
-          <IconAction label={t("Logs")} onClick={() => openLogs(inst.id)}>
-            <ScrollText size={15} />
-          </IconAction>
-          <IconAction label={t("Open folder")} onClick={openFolder}>
-            <FolderOpen size={15} />
-          </IconAction>
-          <IconAction label={t("Instance settings")} onClick={() => openInstanceSettings(inst.id)}>
-            <SlidersHorizontal size={15} />
-          </IconAction>
-          <IconAction label={t(confirmDelete ? "Click again to delete" : "Delete")} onClick={remove} danger>
-            {confirmDelete ? <span className="text-[11px] font-semibold">{t("Sure?")}</span> : <Trash2 size={15} />}
-          </IconAction>
+        <div className="pointer-events-auto">
+          <PlayButton inst={inst} />
         </div>
+      </div>
+      <div className="relative">
+        <ProgressBar s={s} />
       </div>
     </Card>
   );

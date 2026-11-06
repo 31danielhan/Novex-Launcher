@@ -350,12 +350,18 @@ final class SettingsPanel {
 				});
 				break;
 			case MOTION_BLUR:
-				cycleRow(g, "Strength", new String[] {"Light", "Medium", "Strong"}[c.motionBlurLevel - 1], x, w, mx, my, dt,
-						new Runnable() {
-							public void run() {
-								c.motionBlurLevel = c.motionBlurLevel % 3 + 1;
-							}
-						});
+				sliderRow(g, "Strength", c.motionBlurStrength, x, w, new java.util.function.IntConsumer() {
+					public void accept(int v) {
+						c.motionBlurStrength = v;
+					}
+				});
+				break;
+			case CAMERA_STABILIZE:
+				sliderRow(g, "Strength", c.cameraStabilizeStrength, x, w, new java.util.function.IntConsumer() {
+					public void accept(int v) {
+						c.cameraStabilizeStrength = v;
+					}
+				});
 				break;
 			case SIDEBAR:
 				toggleRow(g, "Score numbers", c.sidebarNumbers, x, w, mx, my, dt, new Runnable() {
@@ -450,6 +456,25 @@ final class SettingsPanel {
 			hits.add(new Hit(sx, rowY + 3, 14, 14, saving(i == 0 ? down : up)));
 		}
 		ClientGui.centered(g, value, bx + 35, rowY + 6, TEXT, false);
+		rowY += 24;
+	}
+
+	/** A 0-100 track; clicking it sets the value to the nearest 5. */
+	private void sliderRow(Gfx g, String text, int value, int x, int w, final java.util.function.IntConsumer set) {
+		rowBox(g, x, w);
+		label(g, text, x);
+		int bw = 105, bx = x + w - bw - 33, step = bw / 21;
+		Shapes.round(g, bx, rowY + 7, bx + bw, rowY + 13, 3, OFF);
+		if (value > 0) Shapes.round(g, bx, rowY + 7, bx + bw * value / 100, rowY + 13, 3, ON);
+		ClientGui.centered(g, value + "%", x + w - 16, rowY + 6, TEXT, false);
+		for (int i = 0; i <= 20; i++) {
+			final int v = i * 5;
+			hits.add(new Hit(bx + i * step, rowY + 3, step, 14, saving(new Runnable() {
+				public void run() {
+					set.accept(v);
+				}
+			})));
+		}
 		rowY += 24;
 	}
 

@@ -11,13 +11,16 @@ import {
   ScrollText,
   Search,
   SlidersHorizontal,
+  Swords,
   Trash2,
 } from "lucide-react";
 import {
   api,
   describe,
   errorText,
+  inTauri,
   timeAgo,
+  type ClientStatus,
   type ContentKind,
   type ContentUpdate,
   type Instance,
@@ -28,6 +31,8 @@ import { useApp } from "../store";
 import { inputClass } from "./Dialog";
 import { InstanceIcon, PlayButton, ProgressBar } from "./InstanceCard";
 import { LiveSession } from "./LiveSession";
+import { PageBackdrop } from "./VersionArt";
+import { companions } from "../screens/Client";
 import { Badge, Button, Card, EmptyState, Segmented, Toggle, cx } from "./ui";
 
 type Tab = Exclude<ContentKind, "modpack">;
@@ -62,12 +67,80 @@ export function ProjectIcon({ url, title, size = 36 }: { url: string | null; tit
   );
 }
 
+/** Novex Client for this instance: a switch, plus Update when a newer build is bundled. */
+function ClientCard({ inst, onChange }: { inst: Instance; onChange: () => void }) {
+  const { setError } = useLauncher();
+  const state = useLauncher((s) => statusOf(s.status, inst.id).state);
+  const [status, setStatus] = useState<ClientStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (inTauri) api.clientStatus(inst.id).then(setStatus).catch((e) => setError(errorText(e)));
+  }, [inst.id, setError]);
+
+  const run = async (fn: () => Promise<ClientStatus>) => {
+    setBusy(true);
+    try {
+      setStatus(await fn());
+      onChange();
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const on = !!status?.enabled;
+  const stopped = state === "idle";
+  const unsupported = status?.unsupported && !on ? status.unsupported : null;
+
+  return (
+    <Card className="flex items-center gap-3 p-4">
+      <div className="slot grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-raised text-muted">
+        <Swords size={16} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-semibold">{t("Novex Client")}</p>
+        <p className="truncate text-[12px] text-muted" title={unsupported ?? undefined}>
+          {unsupported ??
+            (!stopped
+              ? t("Close the game to change this.")
+              : status?.outdated
+                ? t("Update available")
+                : on
+                  ? t("Installed")
+                  : t("Also installs {mods}.", { mods: companions(inst.loader) }))}
+        </p>
+      </div>
+      {busy && <Loader2 size={15} className="animate-spin text-muted" />}
+      {status?.outdated && (
+        <Button
+          variant="primary"
+          icon={RefreshCw}
+          className="h-8 px-3 text-[12px]"
+          disabled={busy || !stopped}
+          onClick={() => run(() => api.clientUpdate(inst.id))}
+        >
+          {t("Update")}
+        </Button>
+      )}
+      <Toggle
+        label={t("Novex Client")}
+        checked={on}
+        disabled={!status || !!unsupported || busy || !stopped}
+        onChange={(v) => run(() => api.clientSetEnabled(inst.id, v))}
+      />
+    </Card>
+  );
+}
+
 const keyOf = (i: { kind: ContentKind; file: string }) => `${i.kind}/${i.file}`;
 
 /** An instance's own page: play, and its mods, resource packs and shaders with updates. */
 export function InstancePage({ inst }: { inst: Instance }) {
-  const { status, openContent, openLogs, openInstanceSettings, setBrowseTarget, setError, setNotice } =
+  const { status, openContent, openLogs, openInstanceSettings, refresh, setBrowseTarget, setError, setNotice } =
     useLauncher();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const setScreen = useApp((s) => s.setScreen);
   const [tab, setTab] = useState<Tab>(inst.loader === "vanilla" ? "resourcepack" : "mod");
   const [items, setItems] = useState<InstalledItem[] | null>(null);
@@ -104,6 +177,16 @@ export function InstancePage({ inst }: { inst: Instance }) {
     load();
     check();
   }, [load, check]);
+
+  const removeInstance = async () => {
+    if (!confirmDelete) return setConfirmDelete(true);
+    try {
+      await api.deleteInstance(inst.id);
+      await refresh();
+    } catch (e) {
+      setError(errorText(e));
+    }
+  };
 
   const act = async (fn: () => Promise<unknown>) => {
     try {
@@ -169,6 +252,7 @@ export function InstancePage({ inst }: { inst: Instance }) {
 
   return (
     <div className="flex flex-col gap-4">
+      <PageBackdrop version={inst.version} />
       <button
         onClick={() => openContent(null)}
         className="flex w-fit items-center gap-1.5 rounded-md px-2 py-1 -ml-2 text-[13px] text-muted transition hover:bg-fg/5 hover:text-fg"
@@ -193,10 +277,21 @@ export function InstancePage({ inst }: { inst: Instance }) {
           <Button variant="ghost" icon={SlidersHorizontal} onClick={() => openInstanceSettings(inst.id)}>
             {t("Settings")}
           </Button>
+          <Button
+            variant="ghost"
+            icon={Trash2}
+            onClick={removeInstance}
+            onBlur={() => setConfirmDelete(false)}
+            title={t(confirmDelete ? "Click again to delete" : "Delete")}
+          >
+            {confirmDelete ? t("Sure?") : t("Delete")}
+          </Button>
           <PlayButton inst={inst} large />
         </div>
         <ProgressBar s={s} />
       </Card>
+
+      <ClientCard inst={inst} onChange={load} />
 
       <LiveSession inst={inst} />
 

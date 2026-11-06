@@ -296,6 +296,15 @@ export function SettingsScreen() {
             {info?.dataDir ?? "—"}
           </span>
         </Row>
+        <div className="px-4 py-3 text-[12px] text-muted">
+          <p className="mb-1 font-medium text-fg">{t("Image credits")}</p>
+          <p className="select-text">
+            Version backgrounds are screenshots by Xbox México and Xbox MENA, from Wikimedia Commons
+            (commons.wikimedia.org/wiki/Category:Screenshots_of_Minecraft), licensed under CC BY 3.0
+            (creativecommons.org/licenses/by/3.0). Cropped and resized. Novex is not affiliated with or
+            endorsed by Mojang, Microsoft or Xbox.
+          </p>
+        </div>
       </Card>
     </>
   );

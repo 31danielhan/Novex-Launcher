@@ -62,6 +62,7 @@ const gameplay: OptionsPage = {
     { kind: "toggle", id: "toggleSprint", label: "Toggle sprint", def: false },
     { kind: "toggle", id: "zoom", label: "Zoom", def: true },
     { kind: "toggle", id: "motionBlur", label: "Motion blur", def: false },
+    { kind: "toggle", id: "cameraStabilize", label: "Camera stabilize", def: false },
   ],
 };
 
@@ -98,13 +99,10 @@ export const moduleOptions: Record<string, GameOption[]> = {
   effects: [size("effects", "Size")],
   zoom: [{ kind: "cycle", id: "zoomFactor", label: "Zoom strength", def: 4, values: [[2, "2×"], [4, "4×"], [8, "8×"]] }],
   motionBlur: [
-    {
-      kind: "cycle",
-      id: "motionBlurLevel",
-      label: "Motion blur strength",
-      def: 2,
-      values: [[1, "Light"], [2, "Medium"], [3, "Strong"]],
-    },
+    { kind: "slider", id: "motionBlurStrength", label: "Motion blur strength", def: 50, min: 0, max: 100, step: 5, show: pct },
+  ],
+  cameraStabilize: [
+    { kind: "slider", id: "cameraStabilizeStrength", label: "Stabilize strength", def: 50, min: 0, max: 100, step: 5, show: pct },
   ],
   sidebar: [{ kind: "toggle", id: "sidebarNumbers", label: "Sidebar numbers", def: false }],
   buildLimit: [{ kind: "slider", id: "buildHeight", label: "Build height", def: 255, min: 1, max: 255, step: 1, show: String }],
