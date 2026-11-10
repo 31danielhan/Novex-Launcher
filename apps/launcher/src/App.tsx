@@ -7,7 +7,6 @@ import { GlobalSearch } from "./components/GlobalSearch";
 import { AccountsDialog, Avatar } from "./components/AccountsDialog";
 import { NewInstanceDialog } from "./components/NewInstanceDialog";
 import { LogsDialog } from "./components/LogsDialog";
-import { InstanceSettingsDialog } from "./components/InstanceSettingsDialog";
 import { progressLabel } from "./components/InstanceCard";
 import { cx } from "./components/ui";
 import { useApp, type Screen } from "./store";
@@ -52,7 +51,7 @@ function TopBar({ title }: { title: string }) {
       <GlobalSearch />
       <button
         onClick={() => openNewInstance(true)}
-        className="lift press flex h-10 items-center gap-1.5 rounded-lg bg-accent px-4 text-[13px] font-semibold text-accent-fg transition hover:brightness-110"
+        className="lift press flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-accent px-4 text-[13px] font-semibold text-accent-fg transition hover:brightness-110"
       >
         <Plus size={15} />
         {t("New instance")}
@@ -61,7 +60,7 @@ function TopBar({ title }: { title: string }) {
         onClick={() => openAccounts(true)}
         aria-label={name ?? t("Sign in")}
         title={name ?? t("Sign in")}
-        className="glass hairline shadow-card grid h-10 w-10 place-items-center rounded-lg border bg-surface text-muted transition hover:text-fg"
+        className="glass hairline shadow-card grid h-10 w-10 shrink-0 place-items-center rounded-lg border bg-surface text-muted transition hover:text-fg"
       >
         {active ? <Avatar key={active.uuid} account={active} size={24} /> : <UserRound size={17} />}
       </button>
@@ -87,7 +86,7 @@ function UpdateButton() {
           ? "Downloads the update, then restarts Novex"
           : "Downloads the new interface and reloads it"
       }
-      className="flex h-10 items-center gap-1.5 rounded-lg border border-success/30 bg-success/10 px-4 text-[13px] font-medium text-success transition hover:bg-success/15 disabled:cursor-wait"
+      className="flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-success/30 bg-success/10 px-4 text-[13px] font-medium text-success transition hover:bg-success/15 disabled:cursor-wait"
     >
       {updating ? <Loader2 size={15} className="animate-spin" /> : <ArrowUpCircle size={15} />}
       {updating ? `${t("Updating")}${pct !== null ? ` ${pct}%` : "…"}` : label}
@@ -286,7 +285,6 @@ export default function App() {
       <AccountsDialog />
       <NewInstanceDialog />
       <LogsDialog />
-      <InstanceSettingsDialog />
       {entered && <LanguagePicker />}
     </div>
   );

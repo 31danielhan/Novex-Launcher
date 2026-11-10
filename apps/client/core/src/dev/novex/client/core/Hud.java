@@ -62,6 +62,7 @@ public final class Hud {
 		ELEMENTS.add(new Keystrokes());
 		ELEMENTS.add(new Armor());
 		ELEMENTS.add(new Effects());
+		ELEMENTS.add(new Music());
 	}
 
 	public static Layout layout(Element e, Gfx g, Game game) {
@@ -90,6 +91,7 @@ public final class Hud {
 	}
 
 	public static void draw(Gfx g, Game game) {
+		NowPlaying.keep(NovexCore.config.music);
 		// The editor draws its own copy, so it can show elements even on the title screen.
 		if (!game.active() || NovexCore.editing) return;
 		for (Element e : ELEMENTS) {
@@ -193,6 +195,60 @@ public final class Hud {
 
 		float[] defaultSpot(Gfx g, Game game) {
 			return new float[] {2, 2 + 3 * (g.lineHeight() + 4)};
+		}
+	}
+
+	/**
+	 * Now playing: an equaliser that dances while music plays (and settles when it's paused), the
+	 * title, the artist and which app it's in, and how far through it is. Hidden while nothing's loaded.
+	 */
+	private static final class Music extends Element {
+		private static final int W = 150, H = 32;
+		private static final int BAR = 0xFF8B66F0;
+		private final float[] bars = new float[3];
+		private long last;
+
+		Music() {
+			super("music", Module.MUSIC);
+		}
+
+		int width(Gfx g, Game game, boolean preview) {
+			return W;
+		}
+
+		int height(Gfx g, Game game, boolean preview) {
+			return preview || NowPlaying.present() ? H : 0;
+		}
+
+		void draw(Gfx g, Game game, boolean preview) {
+			boolean real = NowPlaying.present();
+			String title = real ? NowPlaying.title : "Nothing playing";
+			String by = !real ? (NowPlaying.supported() ? "Play something in any app" : "Needs macOS")
+					: NowPlaying.artist.isEmpty() ? NowPlaying.app : NowPlaying.artist + " \u00b7 " + NowPlaying.app;
+			Shapes.round(g, 0, 0, W, H, 5, plateColor() | 0x000A0C10);
+
+			// The equaliser: each bar eases toward its own wave while playing, and down when paused.
+			long now = System.nanoTime();
+			float dt = last == 0 ? 0 : Math.min(0.1f, (now - last) / 1e9f);
+			last = now;
+			double t = now / 1e9;
+			for (int i = 0; i < bars.length; i++) {
+				float target = NowPlaying.playing ? 0.35f + 0.65f * (float) Math.abs(Math.sin(t * (3.1 + i * 1.7) + i * 1.3)) : 0.2f;
+				bars[i] += (target - bars[i]) * Math.min(1f, dt * 9f);
+				int bh = Math.max(2, Math.round(14 * bars[i]));
+				Shapes.round(g, 7 + i * 5, 16 + 7 - bh, 10 + i * 5, 16 + 7, 1.5f, BAR);
+			}
+
+			g.text(ClientGui.fit(g, title, W - 32), 26, 5, textColor(), NovexCore.config.hudShadow);
+			g.text(ClientGui.fit(g, by, W - 32), 26, 15, DIM, NovexCore.config.hudShadow);
+			double d = NowPlaying.duration();
+			float f = d > 0 ? (float) (NowPlaying.position() / d) : 0f;
+			g.fill(26, H - 5, W - 6, H - 4, 0x33FFFFFF);
+			if (f > 0) g.fill(26, H - 5, 26 + Math.round((W - 32) * f), H - 4, BAR);
+		}
+
+		float[] defaultSpot(Gfx g, Game game) {
+			return new float[] {g.width() - W - 2, 2};
 		}
 	}
 

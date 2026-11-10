@@ -1,4 +1,5 @@
 pub mod auth;
+mod backgrounds;
 pub mod client;
 pub mod content;
 pub mod downloads;
@@ -33,6 +34,8 @@ pub struct AppState {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+mod glass;
+
 pub fn run() {
     let ui = update::ui::UiState::default();
     let mut context = tauri::generate_context!();
@@ -76,6 +79,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            glass::window_glass,
             platform::system_info,
             platform::open_path,
             auth::accounts_list,
@@ -101,10 +105,15 @@ pub fn run() {
             loaders::loader_versions,
             instances::instance_folder,
             instances::instance_latest_log,
+            instances::instance_worlds,
             settings::settings_get,
             settings::settings_set,
+            backgrounds::background_get,
+            backgrounds::backgrounds_folder,
             client::client_status,
             client::client_set_enabled,
+            client::instance_switch_to_ornithe,
+            client::client_unsupported,
             client::client_update,
             content::content_sources,
             content::content_search,

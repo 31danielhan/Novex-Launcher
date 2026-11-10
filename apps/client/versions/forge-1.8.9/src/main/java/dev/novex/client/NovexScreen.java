@@ -11,16 +11,30 @@ final class NovexScreen extends GuiScreen {
 	private final GuiScreen parent;
 	private final ClientGui gui;
 
+	/** Novex's own title screen (Custom home page). */
+	static NovexScreen home() {
+		return new NovexScreen(null, new ClientGui().openHome());
+	}
+
 	NovexScreen(GuiScreen parent, boolean settings) {
+		this(parent, settings ? new ClientGui().openSettings() : new ClientGui());
+	}
+
+	private NovexScreen(GuiScreen parent, ClientGui gui) {
 		this.parent = parent;
-		this.gui = settings ? new ClientGui().openSettings() : new ClientGui();
+		this.gui = gui;
 	}
 
 	@Override
 	public void drawScreen(int mouseX, int mouseY, float partial) {
-		// No dirt in a world: the HUD editor shows the game behind it.
-		if (mc.theWorld == null) drawDefaultBackground();
+		// No dirt in a world: the HUD editor shows the game behind it. The home page gets a dark
+		// gradient, since 1.8.9's panorama belongs to its own title screen.
+		if (gui.isHome()) drawGradientRect(0, 0, width, height, 0xFF0B1016, 0xFF18212B);
+		else if (mc.theWorld == null) drawDefaultBackground();
 		gui.render(NovexClient.gfx(), NovexClient.GAME, mouseX, mouseY);
+		if (gui.done()) close();
+		ClientGui.Action action = gui.takeAction();
+		if (action != null) home(action);
 	}
 
 	@Override
@@ -71,5 +85,15 @@ final class NovexScreen extends GuiScreen {
 	@Override
 	public boolean doesGuiPauseGame() {
 		return false;
+	}
+
+	/** The custom title screen's buttons: the game's own screens, with this one to come back to. */
+	private void home(ClientGui.Action action) {
+		switch (action) {
+			case SINGLEPLAYER: mc.displayGuiScreen(new net.minecraft.client.gui.GuiSelectWorld(this)); break;
+			case MULTIPLAYER: mc.displayGuiScreen(new net.minecraft.client.gui.GuiMultiplayer(this)); break;
+			case OPTIONS: mc.displayGuiScreen(new net.minecraft.client.gui.GuiOptions(this, mc.gameSettings)); break;
+			case QUIT: mc.shutdown(); break;
+		}
 	}
 }

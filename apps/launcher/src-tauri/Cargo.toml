@@ -1,7 +1,8 @@
 [package]
 name = "novex-launcher"
-version = "0.4.0"
+version = "0.5.0"
 description = "A clean, minimal Minecraft launcher"
+license = "GPL-3.0-only"
 edition = "2021"
 rust-version = "1.77.2"
 
@@ -14,7 +15,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["macos-private-api"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
@@ -45,3 +46,6 @@ strip = true
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"

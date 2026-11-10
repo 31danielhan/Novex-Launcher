@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { api, inTauri } from "../lib/api";
 import { cx } from "./ui";
 
 /** Each version's scene: a screenshot if one is in assets/versions, otherwise an original pixel scene drawn in code. */
@@ -191,16 +192,45 @@ const eras: Record<string, string> = {
   "10": "1.9", "11": "1.9", "12": "1.9", "15": "1.14",
 };
 
-function screenshot(version: string) {
+function keyOf(version: string) {
   const [major, minor] = version.split(".");
-  const key = major === "1" ? (eras[minor] ?? `1.${minor}`) : major;
+  return major === "1" ? (eras[minor] ?? `1.${minor}`) : major;
+}
+
+function screenshot(version: string) {
+  const key = keyOf(version);
   const find = (set: Record<string, string>) =>
     set[Object.keys(set).find((p) => p.split("/").pop()?.replace(/\.\w+$/, "") === key) ?? ""];
   return find(localShots) ?? find(shots) ?? null;
 }
 
+/** Images from the user's backgrounds folder, which win over everything shipped. Only hits are kept, so new files show up. */
+const folderShots = new Map<string, string>();
+
+function useFolderShot(version: string) {
+  const key = keyOf(version);
+  const [shot, setShot] = useState(() => folderShots.get(key) ?? null);
+  useEffect(() => {
+    if (!inTauri) return;
+    let live = true;
+    api
+      .background(key)
+      .then((url) => {
+        if (url) folderShots.set(key, url);
+        if (live) setShot(url);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [key]);
+  return shot;
+}
+
 export function VersionArt({ version, className }: { version: string; className?: string }) {
-  const shot = useMemo(() => screenshot(version), [version]);
+  const folder = useFolderShot(version);
+  const shipped = useMemo(() => screenshot(version), [version]);
+  const shot = folder ?? shipped;
   const url = useMemo(() => shot ?? render(pick(version)), [shot, version]);
   return (
     <div

@@ -12,29 +12,52 @@ export type Palette =
   | "ocean"
   | "sunset"
   | "forest"
+  | "gold"
   | "pumpkin"
   | "pcl"
-  | "prism";
+  | "prism"
+  | "minecraft"
+  | "poly";
 
 export type SearchTarget = "game" | "client" | "browse";
 
-const flat: Palette[] = ["pcl", "prism"];
+const flat: Palette[] = ["pcl", "prism", "minecraft", "poly"];
 
 export const palettes: { value: Palette; label: string; swatch: string }[] = [
+  // Colors from OneLauncher's PolyGlass themes by Polyfrost (GPL-3.0).
+  { value: "poly", label: "Poly", swatch: "linear-gradient(135deg, #11171c 50%, #2b4bff 50%)" },
   { value: "classic", label: "Classic", swatch: "linear-gradient(135deg, #e4e7e9, #2e6840)" },
   { value: "glass", label: "Glass", swatch: "linear-gradient(135deg, #c7d2fe, #fbcfe8, #bae6fd)" },
   { value: "aurora", label: "Aurora", swatch: "linear-gradient(135deg, #8b5cf6, #2dd4bf)" },
   { value: "ocean", label: "Ocean", swatch: "linear-gradient(135deg, #2563eb, #22d3ee)" },
   { value: "sunset", label: "Sunset", swatch: "linear-gradient(135deg, #f97316, #ec4899)" },
   { value: "forest", label: "Forest", swatch: "linear-gradient(135deg, #16a34a, #a3e635)" },
+  { value: "gold", label: "Gold", swatch: "linear-gradient(135deg, #fde68a, #f59e0b, #b45309)" },
   { value: "pumpkin", label: "Pumpkin", swatch: "linear-gradient(135deg, #fed7aa, #f08a24)" },
   { value: "pcl", label: "PCL", swatch: "linear-gradient(135deg, #ffffff 50%, #1d1d22 50%), #1370f3" },
   { value: "prism", label: "Prism", swatch: "linear-gradient(135deg, #ffffff, #8fd694)" },
+  { value: "minecraft", label: "Minecraft", swatch: "linear-gradient(180deg, #5d9b3a 35%, #866043 35%)" },
 ];
 
 const THEME_KEY = "novex.theme";
 const PALETTE_KEY = "novex.palette";
 const LANGUAGE_KEY = "novex.language";
+const OPACITY_KEY = "novex.windowOpacity";
+
+/** How solid a glass theme's window background is, 50–100 percent. */
+function readOpacity(): number {
+  try {
+    const v = Number(localStorage.getItem(OPACITY_KEY));
+    if (v >= 50 && v <= 100) return v;
+  } catch {
+    // Storage can be unavailable; fall back to the default.
+  }
+  return 82;
+}
+
+function applyOpacity(percent: number) {
+  document.documentElement.style.setProperty("--window-alpha", String(percent / 100));
+}
 
 function read<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -67,8 +90,21 @@ function applyTheme(pref: ThemePref) {
 function applyPalette(p: Palette) {
   const root = document.documentElement;
   root.dataset.palette = p;
-  if (flat.includes(p)) delete root.dataset.glass;
-  else root.dataset.glass = "";
+  const glass = !flat.includes(p);
+  if (glass) root.dataset.glass = "";
+  else delete root.dataset.glass;
+  windowGlass(glass);
+}
+
+/** Glass themes get a light blur of the desktop behind their see-through tint (see glass.rs). Flat
+    themes stay solid. Only in the desktop app. */
+function windowGlass(on: boolean) {
+  if (!("__TAURI_INTERNALS__" in window)) return;
+  import("@tauri-apps/api/core")
+    .then(({ invoke }) => invoke("window_glass", { on }))
+    .catch(() => {
+      // Older systems without window effects keep a clear tint.
+    });
 }
 
 interface AppState {
@@ -83,6 +119,9 @@ interface AppState {
   setLanguage: (l: LanguagePref) => void;
   setTheme: (t: ThemePref) => void;
   setPalette: (p: Palette) => void;
+  /** Glass themes' window opacity, in percent. */
+  windowOpacity: number;
+  setWindowOpacity: (percent: number) => void;
 }
 
 export const useApp = create<AppState>((set) => ({
@@ -91,9 +130,15 @@ export const useApp = create<AppState>((set) => ({
   palette: read<Palette>(
     PALETTE_KEY,
     palettes.map((p) => p.value),
-    "classic",
+    "poly",
   ),
   language: read<LanguagePref>(LANGUAGE_KEY, ["system", ...languages.map((l) => l.value)], "system"),
+  windowOpacity: readOpacity(),
+  setWindowOpacity: (windowOpacity) => {
+    write(OPACITY_KEY, String(windowOpacity));
+    applyOpacity(windowOpacity);
+    set({ windowOpacity });
+  },
   pendingSearch: null,
   setPendingSearch: (pendingSearch) => set({ pendingSearch }),
   setScreen: (screen) => set({ screen }),
@@ -117,6 +162,7 @@ export const useApp = create<AppState>((set) => ({
 applyTheme(useApp.getState().theme);
 applyLanguage(resolveLanguage(useApp.getState().language));
 applyPalette(useApp.getState().palette);
+applyOpacity(useApp.getState().windowOpacity);
 window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
   if (useApp.getState().theme === "system") applyTheme("system");
 });

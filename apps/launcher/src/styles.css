@@ -123,6 +123,133 @@
   --accent: 132 214 142;
   --accent-fg: 14 36 18;
 }
+/* Minecraft: square corners, a pixel font and stone-grey panels with a grass-green accent. */
+@font-face {
+  font-family: "Monocraft";
+  src: url("./assets/fonts/monocraft/Monocraft.otf") format("opentype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Monocraft";
+  src: url("./assets/fonts/monocraft/Monocraft-Bold.otf") format("opentype");
+  font-weight: 600 900;
+  font-display: swap;
+}
+:root[data-palette="minecraft"] {
+  --bg: 198 198 198;
+  --surface: 220 220 220;
+  --raised: 186 186 186;
+  --line: 40 40 40;
+  --fg: 32 32 32;
+  --muted: 88 88 88;
+  --accent: 76 132 44;
+  --accent-fg: 255 255 255;
+  --line-alpha: 0.35;
+}
+:root[data-palette="minecraft"][data-theme="dark"] {
+  --bg: 30 30 31;
+  --surface: 49 49 50;
+  --raised: 62 62 64;
+  --line: 0 0 0;
+  --fg: 232 232 232;
+  --muted: 160 160 160;
+  --accent: 110 178 64;
+  --accent-fg: 16 32 8;
+  --line-alpha: 0.6;
+}
+:root[data-palette="minecraft"] body,
+:root[data-palette="minecraft"] body * {
+  font-family: "Monocraft", ui-monospace, monospace !important;
+  /* Monocraft is wide; tighter tracking keeps labels on one line. */
+  letter-spacing: -0.06em !important;
+  border-radius: 0 !important;
+}
+:root[data-palette="minecraft"] button {
+  white-space: nowrap;
+}
+:root[data-palette="minecraft"] body img {
+  image-rendering: pixelated;
+}
+
+/* Poly: ported from OneLauncher by Polyfrost (GPL-3.0), packages/oneclient_app/assets/themes and
+   src/theme/colors.rs. Their PolyGlass palette, Poppins, their radii (controls 8, cards 12) and
+   their 180 ms expo-out motion. */
+@font-face {
+  font-family: "Poppins";
+  src: url("./assets/fonts/poppins/Poppins-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("./assets/fonts/poppins/Poppins-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("./assets/fonts/poppins/Poppins-SemiBold.ttf") format("truetype");
+  font-weight: 600 900;
+  font-display: swap;
+}
+:root[data-palette="poly"] {
+  --bg: 208 215 243;
+  --surface: 227 234 251;
+  --raised: 235 242 255;
+  --line: 163 163 163;
+  --line-alpha: 0.3;
+  --fg: 0 0 0;
+  --muted: 78 86 97;
+  --accent: 43 75 255;
+  --accent-fg: 255 255 255;
+  --success: 35 154 96;
+  --danger: 255 68 68;
+  --shadow: none;
+  --slot-hi-alpha: 0;
+}
+:root[data-palette="poly"][data-theme="dark"] {
+  --bg: 17 23 28;
+  --surface: 21 28 34;
+  --raised: 26 34 41;
+  --line: 255 255 255;
+  --line-alpha: 0.1;
+  --fg: 213 219 255;
+  --muted: 117 120 131;
+  --accent: 43 75 255;
+  --accent-fg: 213 219 255;
+}
+:root[data-palette="poly"] body,
+:root[data-palette="poly"] body * {
+  font-family: "Poppins", system-ui, sans-serif !important;
+  letter-spacing: 0 !important;
+}
+:root[data-palette="poly"] .display {
+  font-weight: 600;
+}
+/* Flat controls: no bottom lip or lift, just a colour change, like their buttons. */
+:root[data-palette="poly"] .press,
+:root[data-palette="poly"] .press:not(:disabled):active,
+:root[data-palette="poly"] .lift.press:not(:disabled):hover {
+  box-shadow: none;
+  transform: none;
+}
+:root[data-palette="poly"] .lift:not(:disabled):hover {
+  transform: none;
+  filter: brightness(1.08);
+}
+:root[data-palette="poly"] .slot {
+  box-shadow: none;
+}
+:root[data-palette="poly"] .lift-card:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: rgb(var(--line) / 0.16);
+}
+:root[data-palette="poly"] body * {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
 :root[data-palette="glass"] {
   --glow-1: 165 180 252;
   --glow-2: 249 168 212;
@@ -149,6 +276,16 @@
   --accent: 234 88 12;
   --accent-fg: 255 255 255;
 }
+:root[data-palette="gold"] {
+  --glow-1: 251 191 36;
+  --glow-2: 245 158 11;
+  --glow-3: 253 230 138;
+  --accent: 180 115 9;
+  --accent-fg: 255 255 255;
+}
+:root[data-palette="gold"][data-theme="dark"] {
+  --accent: 202 138 4;
+}
 :root[data-palette="forest"] {
   --glow-1: 22 163 74;
   --glow-2: 163 230 53;
@@ -159,6 +296,9 @@
 
 .backdrop {
   display: none;
+}
+:root[data-glass] body {
+  background-color: rgb(var(--bg) / var(--window-alpha, 0.82));
 }
 :root[data-glass] .backdrop {
   display: block;
@@ -185,6 +325,10 @@
   body,
   #root {
     height: 100%;
+  }
+
+  html {
+    background: transparent;
   }
 
   body {

@@ -1,0 +1,14 @@
+{
+	"schemaVersion": 1,
+	"id": "novex-client",
+	"version": "${version}",
+	"name": "Novex Client",
+	"description": "Novex Client's HUD, menu and tweaks for Minecraft 1.8.9.",
+	"license": "GPL-3.0-only",
+	"environment": "client",
+	"mixins": ["novex-client.mixins.json"],
+	"depends": {
+		"fabricloader": ">=0.17.3",
+		"minecraft": "1.8.9"
+	}
+}

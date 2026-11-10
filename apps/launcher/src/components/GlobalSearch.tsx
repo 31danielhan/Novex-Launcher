@@ -108,7 +108,7 @@ export function GlobalSearch() {
   };
 
   return (
-    <div ref={box} className="relative w-64">
+    <div ref={box} className="relative w-64 min-w-[8rem] shrink">
       <Search size={15} className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted" />
       <input
         value={query}

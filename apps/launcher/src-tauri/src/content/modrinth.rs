@@ -39,6 +39,7 @@ fn loader_name(l: LoaderKind) -> &'static str {
         LoaderKind::Quilt => "quilt",
         LoaderKind::Forge => "forge",
         LoaderKind::NeoForge => "neoforge",
+        LoaderKind::Ornithe => "ornithe",
     }
 }
 

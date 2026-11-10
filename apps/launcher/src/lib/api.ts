@@ -14,12 +14,13 @@ export interface AccountsView {
   offlineAllowed: boolean;
 }
 
-export type LoaderKind = "vanilla" | "fabric" | "quilt" | "forge" | "neoforge";
+export type LoaderKind = "vanilla" | "fabric" | "quilt" | "ornithe" | "forge" | "neoforge";
 
 export const loaderLabels: Record<LoaderKind, string> = {
   vanilla: "Vanilla",
   fabric: "Fabric",
   quilt: "Quilt",
+  ornithe: "Ornithe",
   forge: "Forge",
   neoforge: "NeoForge",
 };
@@ -46,6 +47,8 @@ export interface Instance {
   modpack?: ModpackRef | null;
   /** Gets the launcher's game settings before each launch. */
   useGameOptions: boolean;
+  /** Installs the performance mods. Unset on older instances: they come with Novex Client, and always on Ornithe. */
+  performanceMods?: boolean | null;
 }
 
 export interface ModpackRef {
@@ -63,6 +66,7 @@ export interface InstancePatch {
   javaPath: string | null;
   jvmArgs: string | null;
   useGameOptions?: boolean;
+  performanceMods?: boolean;
 }
 
 /** "Fabric 0.20.1 · 26.3" or "Vanilla 26.3". */
@@ -154,6 +158,12 @@ export interface ModpackInstalled {
 }
 
 /** Live numbers for a running game. CPU and GPU are 0-100 shares of the machine; GPU is system-wide. */
+export interface World {
+  name: string;
+  path: string;
+  lastPlayed: number;
+}
+
 export interface InstanceStats {
   startedAt: number;
   memoryMb: number;
@@ -232,8 +242,13 @@ export const api = {
 
   versions: () => call<VersionEntry[]>("versions_list"),
   instances: () => call<Instance[]>("instances_list"),
-  createInstance: (name: string, version: string, loader: LoaderKind, loaderVersion: string | null) =>
-    call<Instance>("instance_create", { name, version, loader, loaderVersion }),
+  createInstance: (
+    name: string,
+    version: string,
+    loader: LoaderKind,
+    loaderVersion: string | null,
+    performanceMods: boolean | null = null,
+  ) => call<Instance>("instance_create", { name, version, loader, loaderVersion, performanceMods }),
   updateInstance: (id: string, patch: InstancePatch) =>
     call<Instance>("instance_update", { id, patch }),
   cloneInstance: (id: string) => call<Instance>("instance_clone", { id }),
@@ -242,18 +257,26 @@ export const api = {
   deleteInstance: (id: string) => call<void>("instance_delete", { id }),
   instanceFolder: (id: string, sub?: InstanceFolder) =>
     call<string>("instance_folder", { id, sub: sub ?? null }),
+  worlds: (id: string) => call<World[]>("instance_worlds", { id }),
   latestLog: (id: string) => call<string[]>("instance_latest_log", { id }),
   openPath: (path: string) => call<void>("open_path", { path }),
+  background: (key: string) => call<string | null>("background_get", { key }),
+  backgroundsFolder: () => call<string>("backgrounds_folder"),
 
   launch: (id: string) => call<void>("launch_instance", { id }),
   kill: (id: string) => call<void>("kill_instance", { id }),
   running: () => call<string[]>("running_instances"),
   instanceStats: (id: string) => call<InstanceStats | null>("instance_stats", { id }),
 
+  /** Why Novex Client can't run on this version and loader, or null if it can. */
+  clientUnsupported: (version: string, loader: LoaderKind) =>
+    call<string | null>("client_unsupported", { version, loader }),
   clientStatus: (instanceId: string) => call<ClientStatus>("client_status", { instanceId }),
   clientSetEnabled: (instanceId: string, enabled: boolean) =>
     call<ClientStatus>("client_set_enabled", { instanceId, enabled }),
   clientUpdate: (instanceId: string) => call<ClientStatus>("client_update", { instanceId }),
+  switchToOrnithe: (instanceId: string) =>
+    call<Instance>("instance_switch_to_ornithe", { instanceId }),
 
   contentSources: () => call<{ curseforge: boolean }>("content_sources"),
   search: (query: SearchQuery) => call<SearchPage>("content_search", { query }),

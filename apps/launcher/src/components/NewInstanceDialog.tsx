@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, Search } from "lucide-react";
 import { api, errorText, loaderLabels, type LoaderKind, type VersionEntry } from "../lib/api";
@@ -5,6 +6,18 @@ import { useLauncher } from "../launcher";
 import { Dialog, Field, inputClass } from "./Dialog";
 import { LoaderVersionSelect } from "./LoaderVersionSelect";
 import { Button, Segmented, Toggle, cx } from "./ui";
+
+/** Versions before 1.13, which Ornithe covers. */
+function isOld(version: string) {
+  const [major, minor] = version.split(".").map(Number);
+  return major === 1 && minor < 13;
+}
+
+/** Versions before 1.14, where Fabric itself has no builds (only Legacy Fabric). Fabric runs on Ornithe there. */
+function isPreFabric(version: string) {
+  const [major, minor] = version.split(".").map(Number);
+  return major === 1 && minor < 14;
+}
 
 const loaderOptions = (Object.keys(loaderLabels) as LoaderKind[]).map((k) => ({
   value: k,
@@ -21,12 +34,18 @@ export function NewInstanceDialog() {
   const [loader, setLoader] = useState<LoaderKind>("vanilla");
   const [loaderVersion, setLoaderVersion] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<false | "creating" | "client">(false);
+  const [performanceMods, setPerformanceMods] = useState(true);
+  const [client, setClient] = useState(true);
+  // Why Novex Client can't run on the chosen version and loader; undefined while checking.
+  const [clientBlocked, setClientBlocked] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     if (!newInstanceOpen) return;
     setName("");
     setQuery("");
+    setPerformanceMods(true);
+    setClient(true);
     setError(null);
     api
       .versions()
@@ -45,22 +64,51 @@ export function NewInstanceDialog() {
     [versions, snapshots, query],
   );
 
+  // On old versions, Fabric means Ornithe: Fabric Loader for those versions, with the fast stack.
+  const fabricOnOrnithe = loader === "fabric" && !!selected && isPreFabric(selected);
+  const kind: LoaderKind = fabricOnOrnithe ? "ornithe" : loader;
+
+  useEffect(() => {
+    if (!selected || kind === "vanilla") return;
+    let alive = true;
+    setClientBlocked(undefined);
+    api
+      .clientUnsupported(selected, kind)
+      .then((r) => alive && setClientBlocked(r))
+      .catch((e) => alive && setClientBlocked(errorText(e)));
+    return () => {
+      alive = false;
+    };
+  }, [selected, kind]);
+
+  const withClient = kind !== "vanilla" && client && clientBlocked === null;
+
   const create = async () => {
     if (!selected) return;
-    setBusy(true);
+    setBusy("creating");
     setError(null);
+    let made = false;
     try {
       const fallback =
-        loader === "vanilla" ? `Minecraft ${selected}` : `${loaderLabels[loader]} ${selected}`;
-      await api.createInstance(
+        kind === "vanilla" ? `Minecraft ${selected}` : `${loaderLabels[loader]} ${selected}`;
+      const inst = await api.createInstance(
         name.trim() || fallback,
         selected,
-        loader,
-        loader === "vanilla" ? null : loaderVersion,
+        kind,
+        kind === "vanilla" ? null : loaderVersion,
+        kind === "vanilla" ? null : performanceMods,
       );
+      made = true;
+      // Turning the client on downloads it and the mods it needs, so it can take a moment.
+      if (withClient) {
+        setBusy("client");
+        await api.clientSetEnabled(inst.id, true);
+      }
       await refresh();
       openNewInstance(false);
     } catch (e) {
+      // The instance exists even if the client couldn't be set up; it can be turned on later.
+      if (made) await refresh();
       setError(errorText(e));
     } finally {
       setBusy(false);
@@ -80,9 +128,9 @@ export function NewInstanceDialog() {
           <Button
             variant="primary"
             onClick={create}
-            disabled={!selected || busy || (loader !== "vanilla" && !loaderVersion)}
+            disabled={!selected || !!busy || (loader !== "vanilla" && !loaderVersion)}
           >
-            {busy ? "Creating…" : "Create"}
+            {busy === "client" ? t("Setting up Novex Client…") : busy ? "Creating…" : "Create"}
           </Button>
         </>
       }
@@ -142,15 +190,57 @@ export function NewInstanceDialog() {
         <div className="space-y-2">
           <span className="block text-[12px] font-medium text-muted">Mod loader</span>
           <Segmented value={loader} onChange={setLoader} options={loaderOptions} />
+          {loader === "forge" && selected && isOld(selected) && (
+            <button type="button" className="block text-left text-[12px] text-muted hover:text-fg" onClick={() => setLoader("ornithe")}>
+              {t("Ornithe runs old versions natively on Java 25, so they're much faster than on Forge, especially on Apple Silicon.")}
+            </button>
+          )}
+          {fabricOnOrnithe && (
+            <p className="text-[12px] text-muted">
+              {t("On this version, Fabric runs on Ornithe: Fabric Loader for old versions, running natively on Java 25.")}
+            </p>
+          )}
           {selected && (
             <LoaderVersionSelect
-              kind={loader}
+              kind={kind}
               game={selected}
               value={loaderVersion}
               onChange={setLoaderVersion}
             />
           )}
         </div>
+
+        {selected && kind !== "vanilla" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[13px] font-medium">{t("Performance mods")}</p>
+                <p className="text-[12px] text-muted">
+                  {kind === "ornithe"
+                    ? t("OneClient's set: Argentum, Sarcio, Slipstream and more. Pylon always installs: old versions need it to open a window.")
+                    : t("OneClient's set: Sodium, Lithium, FerriteCore and more, where they support this version.")}
+                </p>
+              </div>
+              <Toggle label={t("Performance mods")} checked={performanceMods} onChange={setPerformanceMods} />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[13px] font-medium">{t("Novex Client")}</p>
+                <p className="text-[12px] text-muted">
+                  {clientBlocked === undefined
+                    ? t("Checking…")
+                    : clientBlocked ?? t("HUD, menu and PvP features. You can change this later on the instance.")}
+                </p>
+              </div>
+              <Toggle
+                label={t("Novex Client")}
+                checked={withClient}
+                disabled={clientBlocked !== null}
+                onChange={setClient}
+              />
+            </div>
+          </div>
+        )}
         {error && <p className="text-[13px] text-danger">{error}</p>}
       </div>
     </Dialog>

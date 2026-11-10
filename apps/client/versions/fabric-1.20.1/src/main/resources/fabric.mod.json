@@ -5,7 +5,7 @@
 	"name": "Novex Client",
 	"description": "HUD and quality-of-life modules for Novex Launcher. Information only: no reach, hitbox, auto-click or ESP.",
 	"authors": ["Novex"],
-	"license": "All-Rights-Reserved",
+	"license": "GPL-3.0-only",
 	"icon": "assets/novex-client/icon.png",
 	"environment": "client",
 	"entrypoints": {

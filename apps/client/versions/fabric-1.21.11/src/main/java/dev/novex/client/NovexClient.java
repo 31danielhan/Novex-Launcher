@@ -56,14 +56,19 @@ public final class NovexClient implements ClientModInitializer {
 		NovexCore.onChange = () -> apply(Minecraft.getInstance());
 		ScreenEvents.AFTER_INIT.register((mc, screen, width, height) -> {
 			if (screen instanceof NovexScreen) return;
+			// Custom home page: Novex's own title screen instead of Minecraft's.
+			if (screen instanceof TitleScreen && NovexCore.config.customHome) {
+				mc.setScreen(NovexScreen.home());
+				return;
+			}
 			// A Novex Client button on the title screen, above Singleplayer.
 			if (screen instanceof TitleScreen && NovexCore.config.titleButton)
 				Screens.getButtons(screen).add(Button.builder(Component.literal("Novex Client"),
 						b -> mc.setScreen(new NovexScreen(screen, true)))
 						.bounds(width / 2 - 100, height / 4 + 24, 200, 20).build());
-			// The menu key opens the editor from any other screen too (menus, inventories, pause).
+			// The menu key opens the menu from any other screen too (menus, inventories, pause).
 			ScreenKeyboardEvents.afterKeyPress(screen).register((s, key) -> {
-				if (menuKey.matches(key) && !(s instanceof ChatScreen)) mc.setScreen(new NovexScreen(s, false));
+				if (menuKey.matches(key) && !(s instanceof ChatScreen)) mc.setScreen(new NovexScreen(s, true));
 			});
 		});
 	}
@@ -79,7 +84,7 @@ public final class NovexClient implements ClientModInitializer {
 			apply(mc);
 			applied = true;
 		}
-		while (menuKey.consumeClick()) mc.setScreen(new NovexScreen(mc.screen, false));
+		while (menuKey.consumeClick()) mc.setScreen(new NovexScreen(mc.screen, true));
 
 		// Smooth camera while zoomed, like a spyglass; put the player's own choice back afterwards.
 		boolean z = NovexCore.config.zoom && zoomKey.isDown() && mc.screen == null;
@@ -92,14 +97,50 @@ public final class NovexClient implements ClientModInitializer {
 		NovexCore.zooming = z;
 	}
 
+	/**
+	 * The menu's smooth font (Poppins) for each GUI scale, from assets/novex-client/font/ui_N.json. Each
+	 * is drawn at exactly the screen's resolution at its scale, so text stays sharp at any GUI scale.
+	 */
+	private static final net.minecraft.network.chat.Style[] UI_FONTS = new net.minecraft.network.chat.Style[9];
+	static {
+		for (int n = 1; n <= 8; n++) UI_FONTS[n] = net.minecraft.network.chat.Style.EMPTY.withFont(new net.minecraft.network.chat.FontDescription.Resource(net.minecraft.resources.Identifier.fromNamespaceAndPath("novex-client", "ui_" + n)));
+	}
+
+	private static net.minecraft.network.chat.Style uiFont() {
+		int scale = (int) Math.round((double) net.minecraft.client.Minecraft.getInstance().getWindow().getGuiScale());
+		return UI_FONTS[Math.max(1, Math.min(8, scale))];
+	}
+
+	/** Line icons (core Icons), small and big, per GUI scale like the UI font: icons_N.json, icons_big_N.json. */
+	private static final net.minecraft.network.chat.Style[] ICON_FONTS = new net.minecraft.network.chat.Style[9], BIG_ICON_FONTS = new net.minecraft.network.chat.Style[9];
+	static {
+		for (int n = 1; n <= 8; n++) {
+			ICON_FONTS[n] = net.minecraft.network.chat.Style.EMPTY.withFont(new net.minecraft.network.chat.FontDescription.Resource(net.minecraft.resources.Identifier.fromNamespaceAndPath("novex-client", "icons_" + n)));
+			BIG_ICON_FONTS[n] = net.minecraft.network.chat.Style.EMPTY.withFont(new net.minecraft.network.chat.FontDescription.Resource(net.minecraft.resources.Identifier.fromNamespaceAndPath("novex-client", "icons_big_" + n)));
+		}
+	}
+
+	static net.minecraft.network.chat.Component iconText(int codepoint, boolean big) {
+		int scale = Math.max(1, Math.min(8, (int) Math.round((double) Minecraft.getInstance().getWindow().getGuiScale())));
+		return net.minecraft.network.chat.Component.literal(new String(Character.toChars(codepoint))).withStyle((big ? BIG_ICON_FONTS : ICON_FONTS)[scale]);
+	}
+
+	static net.minecraft.network.chat.Component ui(String s) {
+		return net.minecraft.network.chat.Component.literal(s).withStyle(uiFont());
+	}
+
 	static Gfx gfx(GuiGraphics g) {
 		Minecraft mc = Minecraft.getInstance();
 		return new Gfx() {
 			public int width() { return g.guiWidth(); }
 			public int height() { return g.guiHeight(); }
+			public float pixels() { return (float) mc.getWindow().getGuiScale(); }
 			public void fill(int x1, int y1, int x2, int y2, int color) { g.fill(x1, y1, x2, y2, color); }
-			public void text(String s, int x, int y, int color, boolean shadow) { g.drawString(mc.font, s, x, y, color, shadow); }
-			public int textWidth(String s) { return mc.font.width(s); }
+			public void text(String s, int x, int y, int color, boolean shadow) {
+				if (NovexCore.uiFont) g.drawString(mc.font, ui(s), x, y, color, false);
+				else g.drawString(mc.font, s, x, y, color, shadow);
+			}
+			public int textWidth(String s) { return NovexCore.uiFont ? mc.font.width(ui(s)) : mc.font.width(s); }
 			public int lineHeight() { return mc.font.lineHeight; }
 			public void item(Object stack, int x, int y) { g.renderItem((ItemStack) stack, x, y); }
 
@@ -121,6 +162,11 @@ public final class NovexClient implements ClientModInitializer {
 					// Items can't be made before their components are bound (title screen on 1.20.5+).
 					return false;
 				}
+			}
+
+			public boolean symbol(int codepoint, int x, int y, boolean big, int color) {
+				g.drawString(mc.font, iconText(codepoint, big), x, y, color, false);
+				return true;
 			}
 
 			public void clip(int x1, int y1, int x2, int y2) { g.enableScissor(x1, y1, x2, y2); }

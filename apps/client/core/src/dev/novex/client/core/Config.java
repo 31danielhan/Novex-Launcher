@@ -19,6 +19,8 @@ public final class Config {
 
 	/** A Novex Client button on the title screen. */
 	public boolean titleButton = true;
+	/** Novex's own title screen instead of Minecraft's. */
+	public boolean customHome = true;
 
 	/** Size set in the launcher, by element id: replaces the scale in `hud` when the game starts. */
 	public Map<String, Float> hudSize = new HashMap<String, Float>();
@@ -51,13 +53,20 @@ public final class Config {
 	/** 0 to 100. */
 	public int motionBlurStrength = 50;
 
+	public boolean fullbright = false;
+
 	public boolean cameraStabilize = false;
 	/** 0 to 100. */
 	public int cameraStabilizeStrength = 50;
 
 	// 1.8.9 only.
+	public boolean customSky = true;
 	public boolean oldBlockHit = true;
 	public boolean oldEating = true;
+	public boolean smoothSneak = true;
+	public boolean smoothEating = true;
+	/** 0 smooth, 1 ripping. */
+	public int eatingStyle = 0;
 	/** Off removes the camera tilt when you take damage. */
 	public boolean damageTilt = true;
 	/** Off keeps the field of view still when sprinting, flying or using a bow. */
@@ -66,6 +75,8 @@ public final class Config {
 	/** Red score numbers on the sidebar; off by default, as most servers use them only for ordering. */
 	public boolean sidebarNumbers = false;
 	public boolean buildLimit = true;
+	/** Now playing: what's playing on the computer (macOS). */
+	public boolean music = true;
 	/** Highest Y you can place a block at. 1.8.9 worlds stop at 255; servers such as Hypixel set lower limits per map. */
 	public int buildHeight = 255;
 

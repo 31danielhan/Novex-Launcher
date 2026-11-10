@@ -1,0 +1,14 @@
+{
+  "providers": [
+    {
+      "type": "ttf",
+      "file": "novex-client:icons.ttf",
+      "size": 22.0,
+      "oversample": 1.0,
+      "shift": [
+        0,
+        15.0
+      ]
+    }
+  ]
+}

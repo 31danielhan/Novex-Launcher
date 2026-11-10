@@ -11,16 +11,28 @@ final class NovexScreen extends Screen {
 	private final Screen parent;
 	private final ClientGui gui;
 
+	/** Novex's own title screen (Custom home page). */
+	static NovexScreen home() {
+		return new NovexScreen(null, new ClientGui().openHome());
+	}
+
 	NovexScreen(Screen parent, boolean settings) {
+		this(parent, settings ? new ClientGui().openSettings() : new ClientGui());
+	}
+
+	private NovexScreen(Screen parent, ClientGui gui) {
 		super(Component.literal("Novex Client"));
 		this.parent = parent;
-		this.gui = settings ? new ClientGui().openSettings() : new ClientGui();
+		this.gui = gui;
 	}
 
 	@Override
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
 		// The background is drawn before render() from 1.21.6 on; renderBackground below skips it in a world.
 		gui.render(NovexClient.gfx(g), NovexClient.GAME, mouseX, mouseY);
+		if (gui.done()) close();
+		ClientGui.Action action = gui.takeAction();
+		if (action != null) home(action);
 	}
 
 	/** No blur in a world: the HUD editor shows the game behind it. */
@@ -92,6 +104,17 @@ final class NovexScreen extends Screen {
 	@Override
 	public boolean isPauseScreen() {
 		return false;
+	}
+
+	/** The custom title screen's buttons: the game's own screens, with this one to come back to. */
+	private void home(ClientGui.Action action) {
+		Minecraft mc = Minecraft.getInstance();
+		switch (action) {
+			case SINGLEPLAYER: mc.setScreen(new net.minecraft.client.gui.screens.worldselection.SelectWorldScreen(this)); break;
+			case MULTIPLAYER: mc.setScreen(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(this)); break;
+			case OPTIONS: mc.setScreen(new net.minecraft.client.gui.screens.options.OptionsScreen(this, mc.options)); break;
+			case QUIT: mc.stop(); break;
+		}
 	}
 
 	/** Mouse handlers get no graphics object, so measure with a stand-in of the same size. */

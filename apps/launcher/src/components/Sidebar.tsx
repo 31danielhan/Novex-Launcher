@@ -4,9 +4,7 @@ import {
   Compass,
   Gamepad2,
   LayoutGrid,
-  Moon,
   Settings,
-  Sun,
   Swords,
   type LucideIcon,
 } from "lucide-react";
@@ -46,25 +44,6 @@ function NavButton({ id, label, icon: Icon }: { id: Screen; label: string; icon:
     >
       <Icon size={16} strokeWidth={active ? 2.2 : 1.8} className={active ? "text-accent" : undefined} />
       {t(label)}
-    </button>
-  );
-}
-
-/** Pointer to the PvP client page, kept small so it sits under the nav without competing. */
-function ClientCard() {
-  const setScreen = useApp((s) => s.setScreen);
-  return (
-    <button
-      onClick={() => setScreen("client")}
-      className="glass hairline shadow-card lift-card flex w-full items-start gap-3 rounded-xl border bg-surface p-3 text-left"
-    >
-      <div className="slot grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-accent/15 text-accent">
-        <Swords size={17} strokeWidth={1.9} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[13px] font-semibold">{t("Novex Client")}</p>
-        <p className="mt-0.5 text-[12px] leading-snug text-muted">{t("HUD mod for every version, built in.")}</p>
-      </div>
     </button>
   );
 }
@@ -114,32 +93,6 @@ const phaseShort: Record<Phase, string> = {
   closing: "Closing",
 };
 
-function ThemeSwitch() {
-  // Subscribing to theme re-renders this when it changes; the resolved value is on <html>.
-  useApp((s) => s.theme);
-  const setTheme = useApp((s) => s.setTheme);
-  const dark = document.documentElement.dataset.theme === "dark";
-  const option = (value: "light" | "dark", Icon: LucideIcon, on: boolean) => (
-    <button
-      aria-label={`${value} theme`}
-      aria-pressed={on}
-      onClick={() => setTheme(value)}
-      className={cx(
-        "grid h-7 flex-1 place-items-center rounded-md transition",
-        on ? "shadow-card bg-surface text-fg" : "text-muted hover:text-fg",
-      )}
-    >
-      <Icon size={15} />
-    </button>
-  );
-  return (
-    <div className="slot mt-3 flex rounded-lg bg-fg/[0.05] p-1">
-      {option("light", Sun, !dark)}
-      {option("dark", Moon, dark)}
-    </div>
-  );
-}
-
 export function Sidebar() {
   return (
     <nav data-tauri-drag-region className="titlebar-inset flex w-56 shrink-0 flex-col px-3 pb-4 pt-5">
@@ -155,9 +108,6 @@ export function Sidebar() {
           </div>
         ))}
       </div>
-      <div className="flex-1" />
-      <ClientCard />
-      <ThemeSwitch />
     </nav>
   );
 }

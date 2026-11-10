@@ -157,3 +157,21 @@ To test locally, point a debug build at your own server with `NOVEX_UPDATE_ENDPO
 ```bash
 npm run tauri icon app-icon.png
 ```
+
+## License
+
+Novex Launcher and Novex Client are free software under the [GNU General Public License v3.0](LICENSE) (GPL-3.0-only). You can use, study, change and share them, as long as anything you distribute that's based on them is also released under GPL-3.0 with its source code.
+
+## Credits
+
+- [OneLauncher / OneClient](https://github.com/Polyfrost/OneLauncher) by Polyfrost (GPL-3.0): design reference for the launcher and the in-game menu, the source of the Poly theme (colours, radii and motion from its PolyGlass themes), and of the performance mods installed with Novex Client (picked from its performance bundles). Code taken from it is marked in the source files it appears in.
+- [OneConfig](https://github.com/Polyfrost/OneConfig) by Polyfrost (LGPL-3.0 with Additional Terms, used here under the GPL-3.0): the in-game menu's colours, radii, layout, cards, switches and page animation are adapted from its interface code.
+- [Ornithe](https://ornithemc.net) (Fabric Loader for old versions) runs the 1.8.9 Ornithe build. Its 1.8.9 launch profile comes from Polyfrost's metadata server, the same one OneClient uses, which runs the game on Java 25 with [Legacy Fabric](https://legacyfabric.net)'s LWJGL 2. The 1.8.9 Ornithe build compiles against names made by joining Ornithe's Calamus intermediary with MCP stable 22.
+- 1.8.9 performance mods, downloaded from their authors' Modrinth or GitHub pages when Novex Client is installed: [Pylon](https://modrinth.com/mod/pylon) (LWJGL 3), [Slipstream](https://modrinth.com/mod/slipstream), [Exploint](https://modrinth.com/mod/exploint), [Async Logger](https://modrinth.com/mod/asynclogger), [Legacy Dynamic FPS](https://modrinth.com/mod/dynamic-fps), [Windows Priority Boost](https://modrinth.com/mod/windows-priority-boost), Polyfrost's [Argentum, Argentum Extras, Cera](https://github.com/Polyfrost/Argentum) and [Sarcio](https://github.com/Polyfrost/Sarcio), and [SoundFix](https://github.com/saadndm/soundfix). Novex doesn't ship any of them.
+- [Monocraft](https://github.com/IdreesInc/Monocraft) by Idrees Hassan (SIL Open Font License 1.1): the Minecraft theme's font.
+- [Poppins](https://github.com/itfoundry/Poppins) by Indian Type Foundry (SIL Open Font License 1.1): the in-game menu and Poly theme font.
+- [Lucide](https://lucide.dev) (ISC License): the in-game menu's line icons, shipped as a font cut down to the icons Novex uses.
+- [mediaremote-adapter](https://github.com/ungive/mediaremote-adapter): the idea behind the Now playing module's macOS helper (`apps/client/tools/now-playing`), which reads what's playing by loading a small library into `/usr/bin/perl`. Novex's helper is its own code.
+- Version backgrounds: screenshots by Xbox México and Xbox MENA from Wikimedia Commons, CC BY 3.0.
+
+Novex is not affiliated with or endorsed by Mojang, Microsoft or Polyfrost.

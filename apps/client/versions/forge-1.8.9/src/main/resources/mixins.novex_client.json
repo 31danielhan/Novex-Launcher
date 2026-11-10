@@ -3,5 +3,5 @@
 	"refmap": "mixins.novex_client.refmap.json",
 	"minVersion": "0.7",
 	"compatibilityLevel": "JAVA_8",
-	"client": ["EntityTurnMixin", "NetworkPlayerInfoMixin", "ItemRendererMixin", "EntityRendererMixin", "GuiIngameMixin"]
+	"client": ["RenderManagerMixin", "EffectRendererMixin", "MinecraftMixin", "RenderGlobalMixin", "EntityTurnMixin", "NetworkPlayerInfoMixin", "ItemRendererMixin", "EntityRendererMixin", "GuiIngameMixin"]
 }
