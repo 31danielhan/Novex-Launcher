@@ -2,6 +2,7 @@
 //! blur view is added and then faded: the desktop shows through, softened, under the window's tint.
 
 /// How strongly the blur view shows: 0 is a clear window, 1 the full grey material.
+#[cfg(target_os = "macos")]
 const STRENGTH: f64 = 0.5;
 
 #[tauri::command]
