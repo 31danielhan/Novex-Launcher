@@ -1,0 +1,71 @@
+// Minecraft 1.8.9 on Ornithe (Fabric Loader for old versions). This is what runs 1.8.9 natively
+// on Java 25 and LWJGL with Apple Silicon natives, like Polyfrost's OneClient does.
+//
+// The code is shared with forge-1.8.9, which is written against MCP names, so this build compiles
+// against MCP names too: mappings/build_mappings.py joins Ornithe's Calamus intermediary with MCP
+// stable 22 on the obfuscated names. The inputs are downloaded and the result kept in build/.
+plugins {
+	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+	id 'ploceus' version "${ploceus_version}"
+}
+
+// Loom reads mappings from a jar holding mappings/mappings.tiny.
+def mappingsFile = file("build/mappings/novex-mcp-${project.minecraft_version}.jar")
+if (!mappingsFile.exists()) {
+	def work = file("build/mappings")
+	work.mkdirs()
+	def get = { String url, String name ->
+		def f = new File(work, name)
+		if (!f.exists()) new URL(url).withInputStream { i -> f.withOutputStream { it << i } }
+		f
+	}
+	def calamus = get("https://maven.ornithemc.net/releases/net/ornithemc/calamus-intermediary-gen2/1.8.9/calamus-intermediary-gen2-1.8.9.jar", "calamus.jar")
+	def srg = get("https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp/1.8.9/mcp-1.8.9-srg.zip", "mcp-srg.zip")
+	def stable = get("https://maven.minecraftforge.net/de/oceanlabs/mcp/mcp_stable/22-1.8.9/mcp_stable-22-1.8.9.zip", "mcp-stable.zip")
+	def unzip = { File zip, String entry ->
+		def out = new File(work, entry.replace('/', '_'))
+		new java.util.zip.ZipFile(zip).withCloseable { z -> out.bytes = z.getInputStream(z.getEntry(entry)).bytes }
+		out
+	}
+	def proc = ["python3", "-I", file("mappings/build_mappings.py").absolutePath,
+			unzip(calamus, "mappings/mappings.tiny").absolutePath, unzip(srg, "joined.srg").absolutePath,
+			stable.absolutePath, new File(work, "mappings.tiny").absolutePath].execute()
+	proc.waitForProcessOutput(System.out, System.err)
+	if (proc.exitValue() != 0) throw new GradleException("Couldn't build the MCP mappings")
+	new java.util.zip.ZipOutputStream(new FileOutputStream(mappingsFile)).withCloseable { z ->
+		z.putNextEntry(new java.util.zip.ZipEntry("mappings/mappings.tiny"))
+		z << new File(work, "mappings.tiny").bytes
+		z.closeEntry()
+	}
+}
+
+// HUD logic shared by every version lives in ../../core.
+sourceSets.main.java.srcDir "../../core/src"
+
+base {
+	archivesName = "novex-client-ornithe-1.8.9"
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings files(mappingsFile)
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.encoding = "UTF-8"
+	it.options.release = 8
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_1_8
+	targetCompatibility = JavaVersion.VERSION_1_8
+}

@@ -27,11 +27,50 @@ public final class ClientGui {
 	private float guideX = Float.NaN, guideY = Float.NaN;
 
 	private SettingsPanel panel = new SettingsPanel(this);
+	/** The custom title screen, when this is one; {@link #homeShown} while it's showing. */
+	private HomeMenu home;
+	private boolean homeShown;
+	private Action action;
+
+	/** What the custom title screen asks the version to do: open the game's own screens, or quit. */
+	public enum Action { SINGLEPLAYER, MULTIPLAYER, OPTIONS, QUIT }
 	private Hud.Element pending;
 	private float pendingBy;
 
 	public ClientGui() {
 		NovexCore.editing = true;
+	}
+
+	/** Makes this the custom title screen (Custom home page). It never closes by itself. */
+	public ClientGui openHome() {
+		NovexCore.editing = false;
+		home = new HomeMenu(this);
+		homeShown = true;
+		settings = false;
+		return this;
+	}
+
+	/** Whether this is the custom title screen. */
+	public boolean isHome() {
+		return home != null;
+	}
+
+	/** The action the custom title screen wants done, once; screens check this every frame. */
+	public Action takeAction() {
+		Action a = action;
+		action = null;
+		return a;
+	}
+
+	void act(Action a) {
+		action = a;
+	}
+
+	/** The title screen's Novex Client button: the settings, over the home page. */
+	void homeSettings() {
+		homeShown = false;
+		settings = true;
+		panel = new SettingsPanel(this);
 	}
 
 	/** Call when the screen closes for good. */
@@ -47,26 +86,51 @@ public final class ClientGui {
 		return this;
 	}
 
+	private boolean done;
+
+	/** Closes the whole screen: the menu's close button, or a click outside it. */
 	void closeSettings() {
-		settings = false;
+		if (home != null) {
+			// On the title screen, closing the settings goes back to it.
+			settings = false;
+			homeShown = true;
+			NovexCore.editing = false;
+			home.replay();
+		} else done = true;
 	}
 
-	/** Esc: steps back inside the settings, then to the editor; the editor closes. Returns true to close the screen. */
+	/** Whether the screen should close now; screens check this every frame. */
+	public boolean done() {
+		return done;
+	}
+
+	/** The menu's Edit HUD button: shows the HUD editor. */
+	void editHud() {
+		settings = false;
+		homeShown = false;
+		NovexCore.editing = true;
+	}
+
+	/** Esc: steps back inside the menu, then closes; the HUD editor goes back to the menu. Returns true to close the screen. */
 	public boolean escape() {
-		if (settings) {
-			if (!panel.back()) settings = false;
+		if (homeShown) return false;
+		if (home != null && settings) {
+			if (!panel.back()) closeSettings();
 			return false;
 		}
-		return true;
+		if (settings) return !panel.back();
+		settings = true;
+		if (panel == null) panel = new SettingsPanel(this);
+		return false;
 	}
 
 	/** Typed characters go to the settings search. */
 	public void typed(char c) {
-		if (settings) panel.typed(c);
+		if (settings && !homeShown) panel.typed(c);
 	}
 
 	public void backspace() {
-		if (settings) panel.backspace();
+		if (settings && !homeShown) panel.backspace();
 	}
 
 	/** A size change from the settings for an element still at its default spot, applied on the next frame. */
@@ -85,7 +149,22 @@ public final class ClientGui {
 			NovexCore.config.save();
 			pending = null;
 		}
-		if (settings) panel.render(g, game, mx, my);
+		Shapes.density(g.pixels());
+		if (homeShown) {
+			NovexCore.uiFont = true;
+			try {
+				home.render(g, mx, my);
+			} finally {
+				NovexCore.uiFont = false;
+			}
+		} else if (settings) {
+			NovexCore.uiFont = true;
+			try {
+				panel.render(g, game, mx, my);
+			} finally {
+				NovexCore.uiFont = false;
+			}
+		}
 		else renderEditor(g, game, mx, my);
 	}
 
@@ -120,7 +199,7 @@ public final class ClientGui {
 		g.pop();
 		centered(g, "Settings", c[0] + c[2] / 2, c[1] + 25, overButton ? ACCENT : MUTED, false);
 
-		String hint = "Drag to move. Drag a corner or scroll to resize. Right Shift to close.";
+		String hint = "Drag to move. Drag a corner or scroll to resize. Esc to go back.";
 		centered(g, hint, g.width() / 2, g.height() - 14, 0xAAFFFFFF, true);
 	}
 
@@ -132,6 +211,10 @@ public final class ClientGui {
 	// ---- Input --------------------------------------------------------------------------------
 
 	public void mouseDown(Gfx g, Game game, double mx, double my, int button) {
+		if (homeShown) {
+			if (button == 0) home.mouseDown(mx, my);
+			return;
+		}
 		if (settings) {
 			// Outside the panel: back to the editor.
 			if (button == 0 && !panel.mouseDown(mx, my)) closeSettings();
@@ -154,7 +237,7 @@ public final class ClientGui {
 	}
 
 	public void mouseDrag(Gfx g, Game game, double mx, double my) {
-		if (settings || held == null) return;
+		if (homeShown || settings || held == null) return;
 		float[] b = Hud.box(held, g, game, true);
 		Layout l = Hud.layout(held, g, game);
 		if (resizing) {
@@ -191,6 +274,7 @@ public final class ClientGui {
 	}
 
 	public void scroll(Gfx g, Game game, double mx, double my, double amount) {
+		if (homeShown) return;
 		if (settings) {
 			panel.scroll(amount);
 			return;

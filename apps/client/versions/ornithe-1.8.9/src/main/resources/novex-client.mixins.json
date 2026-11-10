@@ -1,0 +1,26 @@
+{
+	"required": true,
+	"package": "dev.novex.client.mixin",
+	"compatibilityLevel": "JAVA_8",
+	"client": [
+		"RenderManagerMixin",
+		"EffectRendererMixin",
+		"MinecraftMixin",
+		"RenderGlobalMixin",
+		"EntityTurnMixin",
+		"NetworkPlayerInfoMixin",
+		"ItemRendererMixin",
+		"EntityRendererMixin",
+		"GuiIngameMixin",
+		"MinecraftHooksMixin",
+		"GameSettingsMixin",
+		"GuiMainMenuMixin",
+		"GuiScreenMixin",
+		"AbstractClientPlayerMixin",
+		"EntityRendererAccessor",
+		"ScaledResolutionMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

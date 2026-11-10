@@ -7,11 +7,18 @@ import { statusOf, useLauncher } from "../launcher";
 import { api, describe, errorText, inTauri, type ClientStatus, type Instance, type LoaderKind } from "../lib/api";
 import { OptionTabs } from "./GameSettings";
 
-/** What installing the client adds with it, matching companions() in client.rs. */
-export function companions(loader: LoaderKind) {
-  if (loader === "fabric" || loader === "quilt") return t("Fabric API and Sodium");
-  if (loader === "forge") return t("Embeddium where available");
-  return t("Sodium where available");
+/** What installing the client adds with it, matching companions() in client.rs. With the
+ * performance mods turned off, only what's needed comes along. */
+export function companions(loader: LoaderKind, performanceMods: boolean | null = null) {
+  if (performanceMods === false) {
+    if (loader === "fabric" || loader === "quilt") return t("Fabric API");
+    if (loader === "ornithe") return t("Pylon");
+    return null;
+  }
+  if (loader === "fabric" || loader === "quilt") return t("Fabric API, Sodium and other performance mods");
+  if (loader === "ornithe") return t("Pylon and other performance mods");
+  if (loader === "forge") return t("Embeddium and other performance mods where available");
+  return t("Sodium and other performance mods where available");
 }
 
 function ClientRow({ inst }: { inst: Instance }) {
@@ -50,7 +57,10 @@ function ClientRow({ inst }: { inst: Instance }) {
             ? status.unsupported
             : installed
               ? describe(inst)
-              : t("Also installs {mods}.", { mods: companions(inst.loader) })}
+              : (() => {
+                  const mods = companions(inst.loader, inst.performanceMods ?? null);
+                  return mods ? t("Also installs {mods}.", { mods }) : describe(inst);
+                })()}
         </p>
       </div>
       {busy && <Loader2 size={15} className="animate-spin text-muted" />}
@@ -110,7 +120,7 @@ export function ClientScreen() {
       <EmptyState
         icon={Swords}
         title={t("No instances yet")}
-        body={t("Novex Client runs on Fabric, Quilt, NeoForge and Forge instances, from 1.8.9 to 26.3.")}
+        body={t("Novex Client runs on Fabric, Quilt, Ornithe, NeoForge and Forge instances, from 1.8.9 to 26.3.")}
         action={
           <Button variant="primary" icon={Plus} onClick={() => openNewInstance(true)}>
             {t("New instance")}
@@ -122,7 +132,7 @@ export function ClientScreen() {
 
   return (
     <>
-      <PageHeader subtitle={t("A HUD mod for your instances, on Fabric, Quilt, NeoForge and Forge. Information only: no reach, hitbox, auto-click or ESP.")} />
+      <PageHeader subtitle={t("A HUD mod for your instances, on Fabric, Quilt, Ornithe, NeoForge and Forge. Information only: no reach, hitbox, auto-click or ESP.")} />
 
       <Card className="mb-6 p-5">
         <div className="mb-2 flex items-center gap-2">

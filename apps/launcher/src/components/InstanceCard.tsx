@@ -15,6 +15,7 @@ const loaderTint: Record<Instance["loader"], string> = {
   vanilla: "from-emerald-300 to-lime-200 text-emerald-900",
   fabric: "from-amber-200 to-orange-100 text-amber-900",
   quilt: "from-fuchsia-300 to-violet-200 text-fuchsia-900",
+  ornithe: "from-sky-300 to-cyan-100 text-sky-900",
   forge: "from-slate-400 to-slate-200 text-slate-900",
   neoforge: "from-orange-300 to-rose-200 text-orange-900",
 };
@@ -24,6 +25,8 @@ const loaderIcon: Record<Instance["loader"], { src: string; className?: string }
   vanilla: { src: vanillaIcon, className: "[image-rendering:pixelated]" },
   fabric: { src: fabricIcon, className: "[image-rendering:pixelated]" },
   quilt: { src: quiltIcon },
+  // Ornithe is Fabric Loader for old versions.
+  ornithe: { src: fabricIcon, className: "[image-rendering:pixelated]" },
   forge: { src: forgeIcon, className: "brightness-[0.3]" },
   neoforge: { src: neoforgeIcon, className: "[image-rendering:pixelated]" },
 };

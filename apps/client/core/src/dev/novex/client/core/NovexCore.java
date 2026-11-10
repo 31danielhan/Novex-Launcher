@@ -10,6 +10,8 @@ public final class NovexCore {
 	public static Module[] modules = Module.BASE;
 	/** True while the HUD editor or settings are open; the editor draws the HUD itself then. */
 	public static boolean editing;
+	/** True while the menu draws, so its text uses the smooth font instead of Minecraft's pixel one. */
+	public static boolean uiFont;
 	/** Set by the adapter each tick while the zoom key is held. */
 	public static boolean zooming;
 

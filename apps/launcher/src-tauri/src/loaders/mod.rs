@@ -2,6 +2,7 @@
 
 mod fabric;
 mod forge;
+mod ornithe;
 
 use std::path::Path;
 
@@ -23,6 +24,8 @@ pub enum LoaderKind {
     Quilt,
     Forge,
     NeoForge,
+    /// Fabric Loader for old versions such as 1.8.9.
+    Ornithe,
 }
 
 impl LoaderKind {
@@ -33,6 +36,7 @@ impl LoaderKind {
             LoaderKind::Quilt => "Quilt",
             LoaderKind::Forge => "Forge",
             LoaderKind::NeoForge => "NeoForge",
+            LoaderKind::Ornithe => "Ornithe",
         }
     }
 }
@@ -70,6 +74,7 @@ pub async fn versions(http: &Client, kind: LoaderKind, game: &str) -> Result<Vec
         LoaderKind::Fabric | LoaderKind::Quilt => fabric::versions(http, kind, game).await?,
         LoaderKind::Forge => forge::forge_versions(http, game).await?,
         LoaderKind::NeoForge => forge::neoforge_versions(http, game).await?,
+        LoaderKind::Ornithe => ornithe::versions(http, game).await?,
     };
     // Default pick goes first: recommended, else newest stable.
     if let Some(i) = list
@@ -93,7 +98,7 @@ pub async fn find_version(
 ) -> Result<String> {
     if matches!(
         kind,
-        LoaderKind::Fabric | LoaderKind::Quilt | LoaderKind::Vanilla
+        LoaderKind::Fabric | LoaderKind::Quilt | LoaderKind::Ornithe | LoaderKind::Vanilla
     ) {
         return Ok(wanted.to_string());
     }
@@ -138,6 +143,7 @@ where
         LoaderKind::Forge | LoaderKind::NeoForge => {
             forge::install(http, paths, kind, lv, &vanilla, java, progress).await?
         }
+        LoaderKind::Ornithe => ornithe::profile(http, paths, &vanilla.id, lv).await?,
         LoaderKind::Vanilla => unreachable!(),
     };
     let mut merged = version::merge(vanilla, profile);
@@ -145,6 +151,23 @@ where
         forge::patch_lwjgl2_for_macos(&mut merged);
     }
     Ok(merged)
+}
+
+/// The Java runtime a loader asks for instead of the game version's own, if any. Ornithe's
+/// profiles from Polyfrost run old versions on Java 25. `None` keeps the vanilla choice.
+pub async fn java_component(
+    http: &Client,
+    paths: &Paths,
+    kind: LoaderKind,
+    game: &str,
+    loader_version: Option<&str>,
+) -> Option<String> {
+    if kind != LoaderKind::Ornithe {
+        return None;
+    }
+    let lv = loader_version.filter(|v| !v.is_empty())?;
+    let profile = ornithe::profile(http, paths, game, lv).await.ok()?;
+    profile.java_version.map(|j| j.component)
 }
 
 #[tauri::command]

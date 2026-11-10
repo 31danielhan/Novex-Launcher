@@ -7,8 +7,13 @@ package dev.novex.client.core;
  * this runs every frame, on versions where each fill is an object for the renderer.
  */
 final class Shapes {
-	/** Sub-pixel steps per GUI pixel. */
-	private static final int Q = 2;
+	/** Sub-pixel steps per GUI pixel: one per real screen pixel, so curves look smooth at any GUI scale. */
+	private static int Q = 2;
+
+	/** Sets how many screen pixels one unit covers where shapes are about to be drawn. */
+	static void density(float screenPixels) {
+		Q = Math.max(2, Math.min(8, Math.round(screenPixels)));
+	}
 
 	/** Rounded rectangle with one radius for every corner. */
 	static void round(Gfx g, float x1, float y1, float x2, float y2, float r, int color) {
@@ -85,6 +90,21 @@ final class Shapes {
 			float a = (1f - (float) i / (steps + 1)) / steps * 1.6f;
 			float d = i * step;
 			round(g, x1 - d, y1 - d + size / 3, x2 + d, y2 + d + size / 3, r + d, alpha(color, a));
+		}
+	}
+
+	/**
+	 * A soft glow: many thin rounded rings, each a little larger and fainter, so the light fades out
+	 * smoothly with no visible bands. `size` is how far it spreads.
+	 */
+	static void glow(Gfx g, float x1, float y1, float x2, float y2, float r, float size, int color) {
+		int steps = Math.max(4, Math.min(14, Math.round(size * 1.5f)));
+		float a = ((color >>> 24) & 0xFF) / 255f;
+		for (int i = steps; i >= 1; i--) {
+			float t = (float) i / steps, d = t * size;
+			// Each ring adds a little; together they fall off like (1 - t)^2.
+			float ring = a * 2.2f * (1 - t) * (1 - t) / steps;
+			round(g, x1 - d, y1 - d, x2 + d, y2 + d, r + d, alpha(color | 0xFF000000, ring));
 		}
 	}
 

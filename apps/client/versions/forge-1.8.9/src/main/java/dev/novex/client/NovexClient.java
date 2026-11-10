@@ -6,6 +6,7 @@ import dev.novex.client.core.Gfx;
 import dev.novex.client.core.Hud;
 import dev.novex.client.core.Module;
 import dev.novex.client.core.NovexCore;
+import dev.novex.client.core.Stabilizer;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.Minecraft;
@@ -25,6 +26,7 @@ import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.item.ItemStack;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.client.event.EntityViewRenderEvent;
 import net.minecraftforge.client.event.FOVUpdateEvent;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.MouseEvent;
@@ -59,13 +61,20 @@ public final class NovexClient {
 		ClientRegistry.registerKeyBinding(menuKey);
 		ClientRegistry.registerKeyBinding(zoomKey);
 		MinecraftForge.EVENT_BUS.register(this);
+		((net.minecraft.client.resources.IReloadableResourceManager) Minecraft.getMinecraft().getResourceManager())
+				.registerReloadListener(new net.minecraft.client.resources.IResourceManagerReloadListener() {
+					public void onResourceManagerReload(net.minecraft.client.resources.IResourceManager manager) {
+						CustomSky.reset();
+					}
+				});
 	}
 
 	@SubscribeEvent
 	public void onTick(TickEvent.ClientTickEvent e) {
 		if (e.phase != TickEvent.Phase.END) return;
 		Minecraft mc = Minecraft.getMinecraft();
-		while (menuKey.isPressed()) mc.displayGuiScreen(new NovexScreen(mc.currentScreen, false));
+		SelfTest.tick();
+		while (menuKey.isPressed()) mc.displayGuiScreen(new NovexScreen(mc.currentScreen, true));
 
 		// Smooth camera while zoomed, like a spyglass; put the player's own choice back afterwards.
 		boolean z = NovexCore.config.zoom && zoomKey.isKeyDown() && mc.currentScreen == null;
@@ -78,12 +87,15 @@ public final class NovexClient {
 		NovexCore.zooming = z;
 
 		motionBlur(mc);
+		Optimizer.enableVbos(mc);
 
 		// 1.7 block hit: holding attack while blocking swings the sword. This only starts the local
 		// swing animation; nothing is sent to the server, so it doesn't change hits.
 		EntityPlayerSP p = mc.thePlayer;
 		if (NovexCore.config.oldBlockHit && p != null && mc.currentScreen == null && p.isUsingItem()
 				&& mc.gameSettings.keyBindAttack.isKeyDown()
+				// Only while aimed at a block or a mob: swinging at air doesn't keep the arm going.
+				&& mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit != net.minecraft.util.MovingObjectPosition.MovingObjectType.MISS
 				&& (!p.isSwingInProgress || p.swingProgressInt >= 3 || p.swingProgressInt < 0)) {
 			p.swingProgressInt = -1;
 			p.isSwingInProgress = true;
@@ -127,6 +139,11 @@ public final class NovexClient {
 	/** A Novex Client button on the title screen, above Singleplayer. */
 	@SubscribeEvent
 	public void onInitGui(GuiScreenEvent.InitGuiEvent.Post e) {
+		// Custom home page: Novex's own title screen instead of Minecraft's.
+		if (e.gui instanceof GuiMainMenu && NovexCore.config.customHome) {
+			Minecraft.getMinecraft().displayGuiScreen(NovexScreen.home());
+			return;
+		}
 		if (e.gui instanceof GuiMainMenu && NovexCore.config.titleButton)
 			e.buttonList.add(new GuiButton(TITLE_BUTTON, e.gui.width / 2 - 100, e.gui.height / 4 + 24, "Novex Client"));
 	}
@@ -137,12 +154,12 @@ public final class NovexClient {
 			Minecraft.getMinecraft().displayGuiScreen(new NovexScreen(e.gui, true));
 	}
 
-	/** The menu key opens the editor from any other screen too (menus, inventories, pause). */
+	/** The menu key opens the menu from any other screen too (menus, inventories, pause). */
 	@SubscribeEvent
 	public void onScreenKey(GuiScreenEvent.KeyboardInputEvent.Post e) {
 		if (Keyboard.getEventKeyState() && Keyboard.getEventKey() == menuKey.getKeyCode()
 				&& !(e.gui instanceof NovexScreen) && !(e.gui instanceof GuiChat))
-			Minecraft.getMinecraft().displayGuiScreen(new NovexScreen(e.gui, false));
+			Minecraft.getMinecraft().displayGuiScreen(new NovexScreen(e.gui, true));
 	}
 
 	/** The blur shader needs this frame's camera turn, so update it every frame, not every tick. */
@@ -154,6 +171,16 @@ public final class NovexClient {
 	@SubscribeEvent
 	public void onMouse(MouseEvent e) {
 		if (e.buttonstate && Minecraft.getMinecraft().currentScreen == null) Clicks.press(e.button);
+	}
+
+	@SubscribeEvent
+	public void onCamera(EntityViewRenderEvent.CameraSetup e) {
+		// Camera stabilize on servers: steadies what's drawn only, so the player's real aim is untouched.
+		Minecraft mc = Minecraft.getMinecraft();
+		if (mc.isSingleplayer() || mc.gameSettings.thirdPersonView != 0 || mc.thePlayer == null
+				|| mc.getRenderViewEntity() != mc.thePlayer) return;
+		e.yaw = Stabilizer.viewYaw(e.yaw);
+		e.pitch = Stabilizer.viewPitch(e.pitch);
 	}
 
 	@SubscribeEvent
@@ -180,6 +207,7 @@ public final class NovexClient {
 		return new Gfx() {
 			public int width() { return res.getScaledWidth(); }
 			public int height() { return res.getScaledHeight(); }
+			public float pixels() { return res.getScaleFactor(); }
 
 			public void push(float x, float y, float scale) {
 				GlStateManager.pushMatrix();
@@ -195,6 +223,14 @@ public final class NovexClient {
 				return stack != null;
 			}
 
+			public boolean symbol(int codepoint, int x, int y, boolean big, int color) {
+				SmoothFont font = big ? SmoothFont.BIG_ICONS : SmoothFont.ICONS;
+				String s = new String(Character.toChars(codepoint));
+				if (!font.can(s, res.getScaleFactor())) return false;
+				font.draw(s, x, y, color);
+				return true;
+			}
+
 			public void clip(int x1, int y1, int x2, int y2) {
 				int f = res.getScaleFactor();
 				GL11.glEnable(GL11.GL_SCISSOR_TEST);
@@ -203,8 +239,14 @@ public final class NovexClient {
 
 			public void noClip() { GL11.glDisable(GL11.GL_SCISSOR_TEST); }
 			public void fill(int x1, int y1, int x2, int y2, int color) { Gui.drawRect(x1, y1, x2, y2, color); }
-			public void text(String s, int x, int y, int color, boolean shadow) { font.drawString(s, x, y, color, shadow); }
-			public int textWidth(String s) { return font.getStringWidth(s); }
+			public void text(String s, int x, int y, int color, boolean shadow) {
+				if (NovexCore.uiFont && SmoothFont.UI.can(s, res.getScaleFactor())) SmoothFont.UI.draw(s, x, y, color);
+				else font.drawString(s, x, y, color, shadow);
+			}
+
+			public int textWidth(String s) {
+				return NovexCore.uiFont && SmoothFont.UI.can(s, res.getScaleFactor()) ? SmoothFont.UI.width(s) : font.getStringWidth(s);
+			}
 			public int lineHeight() { return font.FONT_HEIGHT; }
 
 			public void item(Object stack, int x, int y) {

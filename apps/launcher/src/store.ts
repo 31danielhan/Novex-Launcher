@@ -14,13 +14,17 @@ export type Palette =
   | "forest"
   | "pumpkin"
   | "pcl"
-  | "prism";
+  | "prism"
+  | "minecraft"
+  | "poly";
 
 export type SearchTarget = "game" | "client" | "browse";
 
-const flat: Palette[] = ["pcl", "prism"];
+const flat: Palette[] = ["pcl", "prism", "minecraft", "poly"];
 
 export const palettes: { value: Palette; label: string; swatch: string }[] = [
+  // Colors from OneLauncher's PolyGlass themes by Polyfrost (GPL-3.0).
+  { value: "poly", label: "Poly", swatch: "linear-gradient(135deg, #11171c 50%, #2b4bff 50%)" },
   { value: "classic", label: "Classic", swatch: "linear-gradient(135deg, #e4e7e9, #2e6840)" },
   { value: "glass", label: "Glass", swatch: "linear-gradient(135deg, #c7d2fe, #fbcfe8, #bae6fd)" },
   { value: "aurora", label: "Aurora", swatch: "linear-gradient(135deg, #8b5cf6, #2dd4bf)" },
@@ -30,6 +34,7 @@ export const palettes: { value: Palette; label: string; swatch: string }[] = [
   { value: "pumpkin", label: "Pumpkin", swatch: "linear-gradient(135deg, #fed7aa, #f08a24)" },
   { value: "pcl", label: "PCL", swatch: "linear-gradient(135deg, #ffffff 50%, #1d1d22 50%), #1370f3" },
   { value: "prism", label: "Prism", swatch: "linear-gradient(135deg, #ffffff, #8fd694)" },
+  { value: "minecraft", label: "Minecraft", swatch: "linear-gradient(180deg, #5d9b3a 35%, #866043 35%)" },
 ];
 
 const THEME_KEY = "novex.theme";
@@ -91,7 +96,7 @@ export const useApp = create<AppState>((set) => ({
   palette: read<Palette>(
     PALETTE_KEY,
     palettes.map((p) => p.value),
-    "classic",
+    "poly",
   ),
   language: read<LanguagePref>(LANGUAGE_KEY, ["system", ...languages.map((l) => l.value)], "system"),
   pendingSearch: null,

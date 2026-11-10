@@ -43,7 +43,7 @@ void main() {
         if (len > 0.0005) {
             // Only as many samples as the streak's length needs. A per-pixel jitter hides the steps, and
             // samples near the ends count for less, so the blur fades out instead of ending at an edge.
-            int count = int(clamp(len * 160.0 + 8.0, 8.0, 24.0));
+            int count = int(clamp(len * 100.0 + 6.0, 6.0, 12.0));
             float jitter = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
             vec3 sum = vec3(0.0);
             float total = 0.0;

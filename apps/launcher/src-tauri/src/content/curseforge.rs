@@ -59,7 +59,8 @@ fn loader_type(l: LoaderKind) -> Option<u32> {
         LoaderKind::Fabric => Some(4),
         LoaderKind::Quilt => Some(5),
         LoaderKind::NeoForge => Some(6),
-        LoaderKind::Vanilla => None,
+        // CurseForge has no Ornithe category.
+        LoaderKind::Ornithe | LoaderKind::Vanilla => None,
     }
 }
 

@@ -7,7 +7,6 @@ import { GlobalSearch } from "./components/GlobalSearch";
 import { AccountsDialog, Avatar } from "./components/AccountsDialog";
 import { NewInstanceDialog } from "./components/NewInstanceDialog";
 import { LogsDialog } from "./components/LogsDialog";
-import { InstanceSettingsDialog } from "./components/InstanceSettingsDialog";
 import { progressLabel } from "./components/InstanceCard";
 import { cx } from "./components/ui";
 import { useApp, type Screen } from "./store";
@@ -286,7 +285,6 @@ export default function App() {
       <AccountsDialog />
       <NewInstanceDialog />
       <LogsDialog />
-      <InstanceSettingsDialog />
       {entered && <LanguagePicker />}
     </div>
   );

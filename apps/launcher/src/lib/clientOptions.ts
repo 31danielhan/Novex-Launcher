@@ -72,8 +72,12 @@ const legacy: OptionsPage = {
   id: "legacy",
   title: "1.8 Tweaks",
   options: [
+    { kind: "toggle", id: "customSky", label: "Custom sky", def: true },
     { kind: "toggle", id: "oldBlockHit", label: "1.7 block hit", def: true },
     { kind: "toggle", id: "oldEating", label: "1.7 eating", def: true },
+    { kind: "toggle", id: "smoothSneak", label: "Smooth sneak", def: true },
+    { kind: "toggle", id: "smoothEating", label: "Eating animation", def: true },
+    { kind: "cycle", id: "eatingStyle", label: "Eating style", def: 0, values: [[0, "Smooth"], [1, "Ripping"]] },
     { kind: "toggle", id: "damageTilt", label: "Damage tilt", def: true },
     { kind: "toggle", id: "fovEffects", label: "FOV effects", def: true },
     { kind: "toggle", id: "sidebar", label: "Sidebar", def: true },

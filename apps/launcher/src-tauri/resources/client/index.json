@@ -73,5 +73,10 @@
     "file": "neoforge-26.3.jar",
     "loader": "neoforge",
     "minecraft": "26.3"
+  },
+  {
+    "file": "ornithe-1.8.9.jar",
+    "loader": "ornithe",
+    "minecraft": "1.8.9"
   }
 ]

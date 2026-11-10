@@ -45,6 +45,16 @@ public class HudGameTest implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext ctx) {
+		// Custom home page (on by default): Novex's own title screen replaces Minecraft's.
+		ctx.waitTicks(40);
+		check(ctx.computeOnClient(mc -> mc.screen != null && mc.screen.getClass().getSimpleName().equals("NovexScreen")),
+				"The custom home page didn't replace the title screen");
+		ctx.takeScreenshot("novex-home");
+		// The rest starts from Minecraft's title screen; the home page comes back on after it.
+		ctx.runOnClient(mc -> {
+			dev.novex.client.core.NovexCore.config.customHome = false;
+			mc.setScreen(new net.minecraft.client.gui.screens.TitleScreen());
+		});
 		// Title screen: the Novex Client button opens the settings. Buttons ignore clicks while the
 		// title screen fades in, so wait that out first.
 		ctx.waitTicks(40);
@@ -64,11 +74,9 @@ public class HudGameTest implements FabricClientGameTest {
 		ctx.takeScreenshot("novex-settings-title");
 		ctx.getInput().pressKey(InputConstants.KEY_ESCAPE);
 		ctx.waitTicks(3);
-		ctx.takeScreenshot("novex-editor-title");
-		ctx.getInput().pressKey(InputConstants.KEY_RSHIFT);
-		ctx.waitTicks(3);
 		check(ctx.computeOnClient(mc -> mc.screen instanceof net.minecraft.client.gui.screens.TitleScreen),
-				"Right Shift didn't close back to the title screen");
+				"Esc didn't close the menu back to the title screen");
+		ctx.runOnClient(mc -> dev.novex.client.core.NovexCore.config.customHome = true);
 
 		writeSkin();
 		try (TestSingleplayerContext world = ctx.worldBuilder().create()) {
@@ -83,34 +91,37 @@ public class HudGameTest implements FabricClientGameTest {
 			ctx.takeScreenshot("novex-zoom");
 			ctx.getInput().releaseKey(InputConstants.KEY_C);
 
-			// HUD editor: drag the FPS readout to the middle of the right side.
+			// Right Shift opens the menu.
 			ctx.getInput().pressKey(InputConstants.KEY_RSHIFT);
-			ctx.waitTicks(3);
-			ctx.takeScreenshot("novex-editor");
-			int[] gui = ctx.computeOnClient(mc -> new int[] {mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight()});
-			drag(ctx, 12, 6, gui[0] - 60, gui[1] / 2 - 60);
-			ctx.takeScreenshot("novex-editor-dragged");
-			check(ctx.computeOnClient(mc -> NovexCore.config.hud.containsKey("fps")), "Dragging didn't move the FPS element");
-
-			// The middle button opens the settings; Esc goes back to the editor, Right Shift closes.
-			click(ctx, gui[0] / 2, gui[1] / 2);
-			ctx.waitTicks(3);
+			ctx.waitTicks(9);
 			ctx.takeScreenshot("novex-settings");
-			// The first card's Options bar opens its page; Esc goes back to the grid, then the editor.
-			ctx.waitTicks(6);
-			float ps = Math.min(1f, Math.min((gui[0] - 12f) / 440, (gui[1] - 12f) / 270));
-			float px = (gui[0] - 440 * ps) / 2f, py = (gui[1] - 270 * ps) / 2f;
-			int cw = (440 - 134 - 14 - 16) / 3;
-			click(ctx, px + (134 + cw / 2f) * ps, py + (68 + 73) * ps);
+			int[] gui = ctx.computeOnClient(mc -> new int[] {mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight()});
+			float ps = Math.min(1f, Math.min((gui[0] - 12f) / 556, (gui[1] - 12f) / 280));
+			float px = (gui[0] - 556 * ps) / 2f, py = (gui[1] - 280 * ps) / 2f;
+			// The first card's gear opens its page; Esc goes back to the grid.
+			int cw = (556 - 116 - 14 - 18) / 4;
+			click(ctx, px + (116 + cw - 9) * ps, py + (58 + 9) * ps);
 			ctx.waitTicks(3);
 			ctx.takeScreenshot("novex-options");
 			ctx.getInput().pressKey(InputConstants.KEY_ESCAPE);
 			ctx.waitTicks(2);
+			check(ctx.computeOnClient(mc -> mc.screen) != null, "Esc on a module page closed the menu");
+
+			// Edit HUD in the sidebar opens the editor: drag the FPS readout to the middle of the right side.
+			click(ctx, px + 50 * ps, py + 47 * ps);
+			ctx.waitTicks(3);
+			ctx.takeScreenshot("novex-editor");
+			drag(ctx, 12, 6, gui[0] - 60, gui[1] / 2 - 60);
+			ctx.takeScreenshot("novex-editor-dragged");
+			check(ctx.computeOnClient(mc -> NovexCore.config.hud.containsKey("fps")), "Dragging didn't move the FPS element");
+
+			// Esc goes back to the menu, then closes it.
 			ctx.getInput().pressKey(InputConstants.KEY_ESCAPE);
 			ctx.waitTicks(2);
-			ctx.getInput().pressKey(InputConstants.KEY_RSHIFT);
+			check(ctx.computeOnClient(mc -> mc.screen) != null, "Esc in the editor didn't go back to the menu");
+			ctx.getInput().pressKey(InputConstants.KEY_ESCAPE);
 			ctx.waitTicks(3);
-			check(ctx.computeOnClient(mc -> mc.screen) == null, "Right Shift didn't close the editor");
+			check(ctx.computeOnClient(mc -> mc.screen) == null, "Esc didn't close the menu");
 			ctx.takeScreenshot("novex-hud-moved");
 
 			// Motion blur: tilt the view quickly so the horizon blurs; screenshot on the frame of the last
@@ -134,6 +145,12 @@ public class HudGameTest implements FabricClientGameTest {
 				NovexCore.config.hud.clear();
 			});
 		}
+		// Fabric checks that a test ends on Minecraft's own title screen.
+		ctx.runOnClient(mc -> {
+			dev.novex.client.core.NovexCore.config.customHome = false;
+			mc.setScreen(new net.minecraft.client.gui.screens.TitleScreen());
+		});
+		ctx.waitTicks(2);
 	}
 
 	/**

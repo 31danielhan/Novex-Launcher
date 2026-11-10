@@ -68,9 +68,23 @@ where
             p
         }
         None => {
+            // A loader can ask for newer Java (Ornithe on Java 25). Its libraries then carry Apple
+            // Silicon natives, so the game runs natively instead of through Rosetta.
+            let loader_java = loaders::java_component(
+                http,
+                paths,
+                target.loader,
+                target.version,
+                target.loader_version,
+            )
+            .await;
             let force_x64 = cfg!(all(target_os = "macos", target_arch = "aarch64"))
+                && loader_java.is_none()
                 && !vanilla.has_arm64_mac_natives();
-            java::ensure_runtime(http, paths, vanilla.java_component(), force_x64, |d, t| {
+            let component = loader_java
+                .as_deref()
+                .unwrap_or_else(|| vanilla.java_component());
+            java::ensure_runtime(http, paths, component, force_x64, |d, t| {
                 progress("Downloading Java", d, t)
             })
             .await?
@@ -98,7 +112,13 @@ where
     let libs = files::libraries(paths, &v);
     let (_, client_jar_path) = files::client_jar(paths, &v);
     let mut dls = libs.downloads.clone();
-    let log_config = v.logging.as_ref().and_then(|l| l.client.as_ref()).map(|c| {
+    // Ornithe's profiles bring a newer log4j, which can't load Mojang's XML log layout without
+    // Jackson. Without the config the game uses the plain log4j2.xml in its own jar, as OneClient does.
+    let logging = v
+        .logging
+        .as_ref()
+        .filter(|_| target.loader != LoaderKind::Ornithe);
+    let log_config = logging.and_then(|l| l.client.as_ref()).map(|c| {
         let path = paths.assets().join("log_configs").join(&c.file.id);
         dls.push(Download {
             url: c.file.url.clone(),
@@ -192,6 +212,8 @@ fn build_args(
         "-XX:G1NewSizePercent=20".into(),
         "-XX:G1ReservePercent=20".into(),
         "-XX:MaxGCPauseMillis=50".into(),
+        "-XX:+ParallelRefProcEnabled".into(),
+        "-XX:+UseStringDeduplication".into(),
         "-XX:G1HeapRegionSize=32M".into(),
         format!("-Xms{}M", settings.max_memory_mb.min(512)),
         "-Dlog4j2.formatMsgNoLookups=true".to_string(),
@@ -199,21 +221,28 @@ fn build_args(
     jvm.extend(log_config);
     jvm.extend(settings.jvm_args.split_whitespace().map(str::to_string));
 
-    match &v.arguments {
-        Some(a) if !a.jvm.is_empty() => jvm.extend(a.jvm.iter().flat_map(|x| x.values())),
-        // Versions before 1.13 list no JVM arguments.
-        _ => {
-            // On macOS, old Forge must not get -XstartOnFirstThread: with its launchwrapper the
-            // GL context ends up on the wrong thread ("glCheckFramebufferStatus returned
-            // unknown status:0"). It runs on the patched LWJGL 2 instead (see loaders::forge).
-            if cfg!(target_os = "macos") && !old_forge {
-                jvm.push("-XstartOnFirstThread".into());
-            }
-            jvm.push("-Djava.library.path=${natives_directory}".into());
-            jvm.push("-cp".into());
-            jvm.push("${classpath}".into());
+    let listed: Vec<String> = v
+        .arguments
+        .iter()
+        .flat_map(|a| a.jvm.iter().flat_map(|x| x.values()))
+        .collect();
+    // Versions before 1.13 list no JVM arguments, or only a loader's few (Ornithe's), without
+    // the classpath and natives.
+    if !listed.iter().any(|a| a.contains("${classpath}")) {
+        // On macOS, old Forge must not get -XstartOnFirstThread: with its launchwrapper the
+        // GL context ends up on the wrong thread ("glCheckFramebufferStatus returned
+        // unknown status:0"). It runs on the patched LWJGL 2 instead (see loaders::forge).
+        if cfg!(target_os = "macos")
+            && !old_forge
+            && !listed.iter().any(|a| a == "-XstartOnFirstThread")
+        {
+            jvm.push("-XstartOnFirstThread".into());
         }
+        jvm.push("-Djava.library.path=${natives_directory}".into());
+        jvm.push("-cp".into());
+        jvm.push("${classpath}".into());
     }
+    jvm.extend(listed);
 
     let game: Vec<String> = match (&v.arguments, &v.minecraft_arguments) {
         (Some(a), _) if !a.game.is_empty() => a.game.iter().flat_map(|x| x.values()).collect(),
@@ -341,8 +370,15 @@ async fn start(app: &AppHandle, state: &AppState, id: &str) -> Result<()> {
     };
     let plan = prepare(&state.http, &state.paths, &settings, &target, &creds, emit).await?;
 
-    // Bring Novex Client up to date with the build this launcher carries.
+    // Bring Novex Client up to date with the build this launcher carries, and add any companion
+    // mods a launcher update brought in.
     crate::client::sync(&state.paths, &inst)?;
+    // Ornithe gets Pylon even without the client: LWJGL 3 is what lets old versions open a window
+    // natively on Apple Silicon.
+    if crate::client::wants_companions(&state.paths, &inst) {
+        emit("Checking performance mods", 0, 0);
+        let _ = crate::client::install_companions(&state.http, &state.paths, &inst, false).await;
+    }
     skin::sync(
         &state.http,
         &game_dir,

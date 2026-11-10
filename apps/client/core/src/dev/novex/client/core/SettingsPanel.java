@@ -6,40 +6,39 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The settings window: a Mods tab with a filterable, searchable grid of module cards (icon, name,
- * Options, and an Enabled/Disabled bar), a page of options per module, and a Settings tab for the
- * client itself. Drawn at a fixed size and scaled down to fit small windows.
+ * The settings window: a sidebar for navigation, a searchable grid of module cards (click a card to
+ * switch it, or its gear for options), a page of options per module, and the client's own settings.
+ * Drawn at a fixed size and scaled down to fit small windows.
+ *
+ * <p>The look is adapted from OneConfig by Polyfrost (LGPL-3.0, conveyed here under the GPL-3.0):
+ * its Polyfrosted Dark colors (internal/ui/themes/Impls.kt), its radii (Radii.kt: 6/8/16/20), its
+ * 1391x700 window with a 264-wide sidebar (Shell.kt, Sidebar.kt), mod cards with an inset footer
+ * (screens/Mods.kt) and pages that slide a fifth of the way in while fading (Shell.kt). Sizes are
+ * theirs at 0.4x, Minecraft GUI pixels being much larger than their dp.
  */
 final class SettingsPanel {
-	static final int W = 440, H = 270;
-	private static final int HEAD = 34, SIDE = 124, GRID_X = SIDE + 10, GRID_TOP = HEAD + 34, COLS = 3, GAP = 8;
-	private static final int CARD_H = 100;
+	static final int W = 556, H = 280;
+	private static final int HEAD = 34, SIDE = 106, GRID_X = SIDE + 10, GRID_TOP = HEAD + 24, COLS = 4, GAP = 6;
+	private static final int CARD_H = 60;
+	/** OneConfig's radii at 0.4x: window, card, control. */
+	private static final float R_LG = 8, R_MD = 6.4f, R_SM = 3.2f;
 
-	private static final int BG = 0xF00E1115;
-	private static final int HEADER = 0xF0090B0E;
-	private static final int CARD = 0xE61B2026;
-	private static final int CARD_HOT = 0xF0252B33;
+	private static final int BG = 0xF211171C;
+	private static final int SIDEBAR = 0xF2151C22;
+	private static final int CARD = 0xFF1A2228;
+	private static final int CARD_HOT = 0xFF222C33;
 	private static final int BAR = 0xFF353B42;
 	private static final int BAR_HOT = 0xFF434A52;
-	private static final int ON = 0xFF2BAA5A;
-	private static final int ON_HOT = 0xFF33C267;
-	private static final int OFF = 0xFFC0264A;
-	private static final int OFF_HOT = 0xFFD83258;
-	private static final int BLUE = 0xFF3C82F6;
-	private static final int TEXT = 0xFFF2F4F5;
-	private static final int SOFT = 0xFFC9CED3;
-	private static final int MUTED = 0xFF7F8891;
-	private static final int LINE = 0x1FFFFFFF;
+	private static final int ON = 0xFF2B4BFF;
+	private static final int ON_HOT = 0xFF4562FF;
+	private static final int OFF = 0xFF3A4048;
+	private static final int OFF_HOT = 0xFF4A535C;
+	private static final int TEXT = 0xFFD5DBFF;
+	private static final int SOFT = 0xFFB4B9D6;
+	private static final int MUTED = 0xFF757883;
+	private static final int LINE = 0x1AFFFFFF;
 
 	private enum Tab { MODS, SETTINGS }
-
-	/** Filter chips: label, category (null for all) and color. */
-	private static final Object[][] CHIPS = {
-		{"ALL", null, BLUE},
-		{"HUD", Module.Category.HUD, 0xFF2F5F9E},
-		{"VISUAL", Module.Category.VISUAL, 0xFF6A4FB0},
-		{"GAMEPLAY", Module.Category.GAMEPLAY, 0xFF2A7F6F},
-	};
 
 	private final ClientGui owner;
 	private Tab tab = Tab.MODS;
@@ -52,6 +51,11 @@ final class SettingsPanel {
 	private final Map<String, Float> fades = new HashMap<String, Float>();
 	private final List<Hit> hits = new ArrayList<Hit>();
 	private float px, py, ps = 1f;
+	/** Page slide, as in OneConfig: the new page comes in from a fifth of the way across. */
+	private Object shownPage = Tab.MODS;
+	private long pageChanged;
+	private int pageDir = 1;
+	private float slide;
 
 	SettingsPanel(ClientGui owner) {
 		this.owner = owner;
@@ -74,51 +78,63 @@ final class SettingsPanel {
 		int mx = (int) ((mouseX - px) / ps), my = (int) ((mouseY - py) / ps);
 		hits.clear();
 
+		Object current = tab == Tab.SETTINGS ? tab : page != null ? page : Tab.MODS;
+		if (current != shownPage) {
+			pageDir = page != null && shownPage == Tab.MODS ? 1 : -1;
+			shownPage = current;
+			pageChanged = now;
+		}
+		slide = (1 - ease(Math.min(1f, (now - pageChanged) / 2.2e8f))) * 24 * pageDir;
+		Shapes.density(g.pixels() * ps);
 		g.push(px, py, ps);
-		Shapes.shadow(g, 0, 0, W, H, 12, 10, alpha(0x90000000, open));
-		Shapes.round(g, 0, 0, W, H, 12, BG);
-		Shapes.round(g, 0, 0, W, HEAD, 12, 12, 0, 0, HEADER);
-		g.fill(0, HEAD, W, HEAD + 1, LINE);
-		Shapes.outline(g, 0, 0, W, H, 12, 1, 0x26FFFFFF);
+		Shapes.shadow(g, 0, 0, W, H, R_LG, 12, alpha(0x6B000000, open));
+		Shapes.round(g, 0, 0, W, H, R_LG, BG);
+		Shapes.round(g, 0, 0, SIDE, H, R_LG, 0, 0, R_LG, SIDEBAR);
+		g.fill(SIDE, 0, SIDE + 1, H, LINE);
+		Shapes.outline(g, 0, 0, W, H, R_LG, 1, LINE);
 		header(g, mx, my, dt);
 		sidebar(g, mx, my, dt);
-		if (tab == Tab.SETTINGS) clientSettings(g, mx, my, dt);
-		else if (page != null) options(g, page, mx, my, dt);
+		g.push(slide, 0, 1);
+		int smx = mx - Math.round(slide);
+		if (tab == Tab.SETTINGS) clientSettings(g, smx, my, dt);
+		else if (page != null) options(g, page, smx, my, dt);
+		g.pop();
 		g.pop();
 
 		// The grid scrolls under a clip, set in screen pixels outside the panel's transform.
 		if (tab == Tab.MODS && page == null) grid(g, game, mx, my, dt);
 	}
 
+	/** Back arrow and page title, the search box and the close button, above the content. */
 	private void header(Gfx g, int mx, int my, float dt) {
-		logo(g, 12, 9);
-		g.push(34, 13, 1.3f);
-		int w = spaced(g, "NOVEX", 0, 0, TEXT, 1, true);
-		spaced(g, "CLIENT", w + 4, 0, SOFT, 1, false);
-		g.pop();
-		int x = 168;
-		for (Tab t : Tab.values()) {
-			final Tab target = t;
-			String label = t == Tab.MODS ? "MODS" : "SETTINGS";
-			int bw = spacedWidth(g, label, 2) + 22;
-			float f = fade("tab" + t, hot(mx, my, x, 8, bw, 18), dt);
-			int fill = t == tab ? 0xFF3A4048 : mix(0xFF1A1E23, 0xFF2A3036, f);
-			Shapes.round(g, x, 8, x + bw, 26, 7, fill);
-			Shapes.outline(g, x, 8, x + bw, 26, 7, 1, t == tab ? 0x40FFFFFF : 0x22FFFFFF);
-			spaced(g, label, x + 11, 13, t == tab ? MUTED : SOFT, 2, false);
-			hits.add(new Hit(x, 8, bw, 18, new Runnable() {
+		boolean grid = tab == Tab.MODS && page == null;
+		String title = tab == Tab.SETTINGS ? "Settings" : page != null ? page.label : "Modules";
+		int tx = GRID_X;
+		if (page != null) {
+			float f = fade("back", hot(mx, my, tx - 2, 9, 16, 18), dt);
+			ClientGui.centered(g, "<", tx + 6, 14, mix(MUTED, TEXT, f), false);
+			hits.add(new Hit(tx - 2, 9, 16, 18, new Runnable() {
 				public void run() {
-					tab = target;
 					page = null;
 				}
 			}));
-			x += bw + 8;
+			tx += 16;
 		}
-		// Close.
+		g.push(tx, 13, 1.3f);
+		g.text(title, 0, 0, TEXT, true);
+		g.pop();
+		if (grid) {
+			int sw = 120, sx = W - 34 - sw;
+			Shapes.round(g, sx, 9, sx + sw, 25, R_SM, 0xFF1A2229);
+			Shapes.outline(g, sx, 9, sx + sw, 25, R_SM, 1, LINE);
+			lens(g, sx + 9, 17);
+			boolean caret = (System.currentTimeMillis() / 500) % 2 == 0;
+			if (search.isEmpty()) g.text("Search modules...", sx + 17, 13, MUTED, false);
+			else g.text(ClientGui.fit(g, search, sw - 26) + (caret ? "_" : ""), sx + 17, 13, TEXT, false);
+		}
 		float f = fade("close", hot(mx, my, W - 26, 8, 18, 18), dt);
-		Shapes.round(g, W - 26, 8, W - 8, 26, 7, mix(0xFF2A3036, 0xFF4A535C, f));
-		Shapes.outline(g, W - 26, 8, W - 8, 26, 7, 1, 0x33FFFFFF);
-		ClientGui.centered(g, "x", W - 17, 13, TEXT, true);
+		if (f > 0.02f) Shapes.round(g, W - 26, 8, W - 8, 26, R_SM, alpha(0xFF232D32, f));
+		ClientGui.centered(g, "x", W - 17, 13, mix(SOFT, TEXT, f), false);
 		hits.add(new Hit(W - 26, 8, 18, 18, new Runnable() {
 			public void run() {
 				owner.closeSettings();
@@ -126,44 +142,90 @@ final class SettingsPanel {
 		}));
 	}
 
-	/** The Novex mark: a rounded tile with an N cut from two slanted bars. */
-	private static void logo(Gfx g, int x, int y) {
-		Shapes.round(g, x, y, x + 16, y + 16, 5, 0xFF6D4AE0);
+	/** A small magnifying glass. */
+	private static void lens(Gfx g, int cx, int cy) {
+		g.fill(cx - 3, cy - 4, cx + 2, cy - 3, MUTED);
+		g.fill(cx - 3, cy + 1, cx + 2, cy + 2, MUTED);
+		g.fill(cx - 4, cy - 3, cx - 3, cy + 1, MUTED);
+		g.fill(cx + 2, cy - 3, cx + 3, cy + 1, MUTED);
+		g.fill(cx + 2, cy + 2, cx + 3, cy + 3, MUTED);
+		g.fill(cx + 3, cy + 3, cx + 4, cy + 4, MUTED);
+	}
+
+	/** The launcher logo's purple. */
+	static final int LOGO = 0xFF6D3FD9;
+
+	/**
+	 * The Novex logo in a box `size` pixels square: the launcher's mark, two rounded triangles. Where
+	 * the version can't draw icons, the older N tile.
+	 */
+	static void logo(Gfx g, float x, float y, float size) {
+		g.push(x, y, size / Icons.BIG);
+		// The mark is a little shorter than its box, so it's nudged down to sit centred.
+		boolean drawn = g.symbol(Icons.LOGO, 0, -1, true, LOGO);
+		g.pop();
+		if (drawn) return;
+		g.push(x, y, size / 16f);
+		Shapes.round(g, 0, 0, 16, 16, 5, ON);
 		for (int i = 0; i < 10; i++) {
-			g.fill(x + 3, y + 3 + i, x + 6, y + 4 + i, 0xFFFFFFFF);
-			g.fill(x + 10, y + 3 + i, x + 13, y + 4 + i, 0xFFFFFFFF);
-			g.fill(x + 5 + i * 6 / 10, y + 3 + i, x + 8 + i * 6 / 10, y + 4 + i, 0xFFFFFFFF);
+			g.fill(3, 3 + i, 6, 4 + i, 0xFFFFFFFF);
+			g.fill(10, 3 + i, 13, 4 + i, 0xFFFFFFFF);
+			g.fill(5 + i * 6 / 10, 3 + i, 8 + i * 6 / 10, 4 + i, 0xFFFFFFFF);
 		}
+		g.pop();
 	}
 
 	private void sidebar(Gfx g, int mx, int my, float dt) {
-		g.fill(SIDE, HEAD + 1, SIDE + 1, H, LINE);
-		spaced(g, "PROFILE", 10, HEAD + 10, MUTED, 1, false);
-		Shapes.round(g, 6, HEAD + 22, SIDE - 6, HEAD + 40, 6, 0xFF2A3036);
-		g.text("Default", 12, HEAD + 27, TEXT, false);
-		Shapes.round(g, SIDE - 15, HEAD + 27, SIDE - 11, HEAD + 35, 2, 0xFF6D4AE0);
+		logo(g, 14, 11, 16);
+		g.push(35, 14, 1.25f);
+		spaced(g, "NOVEX", 0, 0, TEXT, 1, true);
+		g.pop();
 
-		int y = H - 52;
-		float f = fade("reset", hot(mx, my, 8, y, SIDE - 16, 18), dt);
-		Shapes.round(g, 8, y, SIDE - 8, y + 18, 7, mix(0xFF1A1E23, 0xFF2A3036, f));
-		Shapes.outline(g, 8, y, SIDE - 8, y + 18, 7, 1, 0x33FFFFFF);
-		centeredSpaced(g, "RESET HUD", SIDE / 2, y + 5, SOFT, 1);
-		hits.add(new Hit(8, y, SIDE - 16, 18, new Runnable() {
+		int y = 38;
+		y = nav(g, "Edit HUD", "minecraft:painting", Icons.LAYOUT_DASHBOARD, false, y, mx, my, dt, new Runnable() {
 			public void run() {
-				NovexCore.config.hud.clear();
-				NovexCore.config.save();
+				owner.editHud();
 			}
-		}));
-		y += 24;
-		f = fade("edit", hot(mx, my, 8, y, SIDE - 16, 20), dt);
-		Shapes.shadow(g, 8, y, SIDE - 8, y + 20, 8, 4, alpha(0x553C82F6, 0.4f + 0.6f * f));
-		Shapes.round(g, 8, y, SIDE - 8, y + 20, 8, mix(0xFF2F6FD6, BLUE, f));
-		centeredSpaced(g, "EDIT HUD LAYOUT", SIDE / 2, y + 6, TEXT, 1);
-		hits.add(new Hit(8, y, SIDE - 16, 20, new Runnable() {
+		});
+		y = section(g, "MODULES", y);
+		y = nav(g, "Modules", "minecraft:chest", Icons.LAYOUT_GRID, tab == Tab.MODS, y, mx, my, dt, new Runnable() {
 			public void run() {
-				owner.closeSettings();
+				tab = Tab.MODS;
+				page = null;
 			}
-		}));
+		});
+		y = section(g, "CLIENT", y);
+		nav(g, "Settings", "minecraft:comparator", Icons.SETTINGS, tab == Tab.SETTINGS, y, mx, my, dt, new Runnable() {
+			public void run() {
+				tab = Tab.SETTINGS;
+				page = null;
+			}
+		});
+
+		g.fill(8, H - 34, SIDE - 8, H - 33, LINE);
+		g.text("Novex Client", 12, H - 26, SOFT, false);
+		g.text("Right Shift", 12, H - 15, MUTED, false);
+	}
+
+	private static int section(Gfx g, String label, int y) {
+		g.push(12, y + 9, 0.75f);
+		spaced(g, label, 0, 0, MUTED, 1, false);
+		g.pop();
+		return y + 18;
+	}
+
+	private int nav(Gfx g, String label, String icon, int glyph, boolean on, int y, int mx, int my, float dt, Runnable action) {
+		float f = fade("nav" + label, hot(mx, my, 6, y, SIDE - 12, 18), dt);
+		if (on) Shapes.round(g, 6, y, SIDE - 6, y + 18, R_SM, ON);
+		else if (f > 0.02f) Shapes.round(g, 6, y, SIDE - 6, y + 18, R_SM, alpha(0x1FD5DBFF, f));
+		if (!g.symbol(glyph, 12, y + 3, false, on ? TEXT : SOFT)) {
+			g.push(12, y + 3, 0.75f);
+			g.icon(icon, 0, 0);
+			g.pop();
+		}
+		g.text(label, 28, y + 5, on ? TEXT : SOFT, false);
+		hits.add(new Hit(6, y, SIDE - 12, 18, action));
+		return y + 20;
 	}
 
 	private List<Module> shown() {
@@ -180,6 +242,10 @@ final class SettingsPanel {
 	private int cardWidth() {
 		return (W - GRID_X - 14 - (COLS - 1) * GAP) / COLS;
 	}
+
+	/** What the grid shows (tab, filter, search) and when that last changed, for the cards' cascade. */
+	private String gridKey;
+	private long gridAt;
 
 	private void grid(Gfx g, Game game, int mx, int my, float dt) {
 		g.push(px, py, ps);
@@ -199,9 +265,20 @@ final class SettingsPanel {
 		g.push(px, py, ps);
 		if (list.isEmpty()) ClientGui.centered(g, "No modules match \"" + search + "\"", GRID_X + (W - GRID_X) / 2, GRID_TOP + 40, MUTED, false);
 		boolean inView = my >= GRID_TOP && my < H - 8;
+		// A new set of cards cascades in: each rises into place a moment after the one before.
+		String key = tab + "|" + filter + "|" + search;
+		long now = System.nanoTime();
+		if (!key.equals(gridKey)) {
+			gridKey = key;
+			gridAt = now;
+		}
+		float since = (now - gridAt) / 1e9f;
 		for (int i = 0; i < list.size(); i++) {
 			int x = GRID_X + (i % COLS) * (cw + GAP);
-			int y = GRID_TOP + (i / COLS) * (CARD_H + GAP) - Math.round(scroll);
+			float rise = Math.max(0f, Math.min(1f, (since - i * 0.035f) / 0.45f));
+			float u = 1 - rise;
+			rise = 1 - u * u * u * u * u;
+			int y = GRID_TOP + (i / COLS) * (CARD_H + GAP) - Math.round(scroll) + Math.round(12 * (1 - rise));
 			if (y > H || y + CARD_H < GRID_TOP) continue;
 			card(g, list.get(i), x, y, cw, inView ? mx : -1, my, dt);
 		}
@@ -216,73 +293,116 @@ final class SettingsPanel {
 		g.noClip();
 	}
 
+	/** Category filters under the title. */
 	private void chips(Gfx g, int mx, int my, float dt) {
-		int x = GRID_X, y = HEAD + 10;
-		for (Object[] chip : CHIPS) {
-			final String label = (String) chip[0];
-			final Module.Category cat = (Module.Category) chip[1];
-			int color = (Integer) chip[2];
-			int w = spacedWidth(g, label, 2) + 16;
+		int x = GRID_X, y = HEAD + 2;
+		Module.Category[] cats = Module.Category.values();
+		for (int i = -1; i < cats.length; i++) {
+			final Module.Category cat = i < 0 ? null : cats[i];
+			String label = cat == null ? "All" : cat.label;
+			int w = g.textWidth(label) + 14;
 			boolean on = filter == cat;
-			float f = fade("chip" + label, hot(mx, my, x, y, w, 16), dt);
-			Shapes.round(g, x, y, x + w, y + 16, 8, on ? color : mix(alpha(color, 0.45f), alpha(color, 0.75f), f));
-			spaced(g, label, x + 8, y + 4, on ? TEXT : SOFT, 2, false);
-			hits.add(new Hit(x, y, w, 16, new Runnable() {
+			float f = fade("chip" + label, hot(mx, my, x, y, w, 15), dt);
+			Shapes.round(g, x, y, x + w, y + 15, R_SM, on ? ON : mix(0xFF1E272D, 0xFF27323A, f));
+			if (!on) Shapes.outline(g, x, y, x + w, y + 15, R_SM, 1, LINE);
+			g.text(label, x + 7, y + 4, on ? TEXT : SOFT, false);
+			hits.add(new Hit(x, y, w, 15, new Runnable() {
 				public void run() {
 					filter = cat;
 					scrollTarget = 0;
 				}
 			}));
-			x += w + 5;
+			x += w + 4;
 		}
-		// Search box.
-		int sx = x + 4, sw = W - 10 - sx;
-		Shapes.round(g, sx, y, sx + sw, y + 16, 8, 0xFF15191D);
-		Shapes.outline(g, sx, y, sx + sw, y + 16, 8, 1, 0x33FFFFFF);
-		boolean caret = (System.currentTimeMillis() / 500) % 2 == 0;
-		if (search.isEmpty()) g.text("search...", sx + 6, y + 4, MUTED, false);
-		else g.text(ClientGui.fit(g, search, sw - 14) + (caret ? "_" : ""), sx + 6, y + 4, TEXT, false);
 	}
 
+	/** Icon on top, name bar below: colored when on. Click to switch; the gear opens options. */
 	private void card(Gfx g, final Module m, int x, int y, int w, int mx, int my, float dt) {
 		final Config c = NovexCore.config;
 		boolean on = m.get(c);
+		int bar = y + CARD_H - 17;
 		float f = fade("card" + m, hot(mx, my, x, y, w, CARD_H), dt);
-		if (f > 0.02f) Shapes.shadow(g, x, y, x + w, y + CARD_H, 8, 4, alpha(0x50000000, f));
-		Shapes.round(g, x, y, x + w, y + CARD_H, 8, mix(CARD, CARD_HOT, f));
+		float sw = fade("switch" + m, on, dt);
+		// OneConfig's inset footer: the card is one rounded tile, the name bar a smaller tile inside it.
+		Shapes.round(g, x, y, x + w, y + CARD_H, R_MD, mix(CARD, CARD_HOT, f));
+		Shapes.outline(g, x, y, x + w, y + CARD_H, R_MD, 1, LINE);
+		Shapes.round(g, x + 2, bar, x + w - 2, y + CARD_H - 2, R_SM, R_SM, R_MD - 2, R_MD - 2,
+				mix(mix(0xFF27323A, 0xFF2E3A43, f), mix(ON, ON_HOT, f), sw));
+		icon(g, m, x + w / 2f - 16, y + 5 - f, on ? TEXT : SOFT);
+		ClientGui.centered(g, ClientGui.fit(g, m.label, w - 8), x + w / 2, bar + 5, on ? TEXT : SOFT, false);
 
-		// Icon, drawn at 2x and lifted a little on hover.
-		icon(g, m, x + w / 2f - 16, y + 12 - 2 * f);
-		g.push(x + w / 2f, y + 50, 1.1f);
-		ClientGui.centered(g, ClientGui.fit(g, m.label, (int) ((w - 10) / 1.1f)), 0, 0, on ? SOFT : MUTED, false);
-		g.pop();
-
-		// Options bar with a gear section on the right; both open the module's page.
-		int oy = y + 66;
-		float fo = fade("opt" + m, hot(mx, my, x, oy, w, 15), dt);
-		g.fill(x, oy, x + w, oy + 15, mix(BAR, BAR_HOT, fo));
-		g.fill(x + w - 18, oy, x + w - 17, oy + 15, 0x33000000);
-		centeredSpaced(g, "OPTIONS", x + (w - 18) / 2, oy + 4, TEXT, 2);
-		gear(g, x + w - 9, oy + 7);
-		gridHit(x, oy, w, 15, new Runnable() {
+		// The gear is first in the hit list, so it wins over the card behind it.
+		int gx = x + w - 15, gy = y + 3;
+		float fg = fade("gear" + m, hot(mx, my, gx, gy, 12, 12), dt);
+		if (f > 0.05f) {
+			if (fg > 0.02f) Shapes.round(g, gx, gy, gx + 12, gy + 12, R_SM, alpha(0xFF2E3A43, fg));
+			gear(g, gx + 6, gy + 6);
+		} else if (on) {
+			Shapes.round(g, gx + 5, gy + 3, gx + 9, gy + 7, 2, ON_HOT);
+		}
+		gridHit(gx, gy, 12, 12, new Runnable() {
 			public void run() {
 				page = m;
 			}
 		});
-
-		// Enabled / disabled bar.
-		int sy = y + 83;
-		float fs = fade("state" + m, hot(mx, my, x, sy, w, 17), dt);
-		Shapes.round(g, x, sy, x + w, y + CARD_H, 0, 0, 8, 8, on ? mix(ON, ON_HOT, fs) : mix(OFF, OFF_HOT, fs));
-		Shapes.outline(g, x, y, x + w, y + CARD_H, 8, 1, alpha(0x30FFFFFF, 0.6f + 0.4f * f));
-		centeredSpaced(g, on ? "ENABLED" : "DISABLED", x + w / 2, sy + 5, TEXT, 2);
-		gridHit(x, sy, w, 17, new Runnable() {
+		gridHit(x, y, w, CARD_H, saving(new Runnable() {
 			public void run() {
 				m.set(c, !m.get(c));
-				c.save();
-				NovexCore.changed();
+			}
+		}));
+	}
+
+	/** Now playing's page: what's playing, which app, how far, and previous / play-pause / next. */
+	private void nowPlaying(Gfx g, int x, int w, int mx, int my, float dt) {
+		NowPlaying.keep(true);
+		int y = rowY, h = 64;
+		Shapes.round(g, x, y, x + w, y + h, R_MD, CARD);
+		Shapes.outline(g, x, y, x + w, y + h, R_MD, 1, LINE);
+		boolean real = NowPlaying.present();
+		String title = !NowPlaying.supported() ? "Needs macOS" : real ? NowPlaying.title : "Nothing playing";
+		String sub = !real ? "Start music or a video in any app." : NowPlaying.artist.isEmpty() ? "" : NowPlaying.artist;
+		g.symbol(Icons.MUSIC, x + 10, y + 10, false, real && NowPlaying.playing ? ON_HOT : MUTED);
+		g.text(ClientGui.fit(g, title, w - 150), x + 28, y + 9, TEXT, false);
+		g.text(ClientGui.fit(g, sub, w - 150), x + 28, y + 20, SOFT, false);
+		if (real) {
+			String where = "Playing in " + NowPlaying.app;
+			g.text(where, x + w - 10 - g.textWidth(where), y + 9, MUTED, false);
+		}
+		// Progress, with the time on either side.
+		double d = NowPlaying.duration(), at = NowPlaying.position();
+		int px1 = x + 40, px2 = x + w - 40, py = y + 38;
+		Shapes.round(g, px1, py, px2, py + 3, 1.5f, 0xFF27323A);
+		if (d > 0) Shapes.round(g, px1, py, px1 + Math.max(3, Math.round((px2 - px1) * (float) (at / d))), py + 3, 1.5f, ON);
+		g.text(NowPlaying.time(at), x + 10, py - 3, MUTED, false);
+		String total = d > 0 ? NowPlaying.time(d) : "--:--";
+		g.text(total, x + w - 10 - g.textWidth(total), py - 3, MUTED, false);
+		// Previous, play/pause (the big one), next.
+		int cx = x + w / 2, by = y + 45;
+		mediaButton(g, "prev", Icons.SKIP_BACK, cx - 40, by, 16, false, real, mx, my, dt, new Runnable() {
+			public void run() {
+				NowPlaying.previous();
 			}
 		});
+		mediaButton(g, "play", NowPlaying.playing ? Icons.PAUSE : Icons.PLAY, cx - 9, by - 1, 18, true, real, mx, my, dt, new Runnable() {
+			public void run() {
+				NowPlaying.toggle();
+			}
+		});
+		mediaButton(g, "next", Icons.SKIP_FORWARD, cx + 24, by, 16, false, real, mx, my, dt, new Runnable() {
+			public void run() {
+				NowPlaying.next();
+			}
+		});
+		rowY += h + 6;
+	}
+
+	private void mediaButton(Gfx g, String key, int icon, int x, int y, int size, boolean main, boolean live, int mx, int my, float dt, Runnable action) {
+		float f = fade("media" + key, live && hot(mx, my, x, y, size, size), dt);
+		if (main) Shapes.round(g, x, y, x + size, y + size, size / 2f, live ? mix(ON, ON_HOT, f) : OFF);
+		else if (f > 0.02f) Shapes.round(g, x, y, x + size, y + size, size / 2f, alpha(0x1FD5DBFF, f));
+		int c = live ? (main ? 0xFFFFFFFF : mix(SOFT, TEXT, f)) : MUTED;
+		g.symbol(icon, x + (size - Icons.SMALL) / 2, y + (size - Icons.SMALL) / 2, false, c);
+		if (live) hits.add(new Hit(x, y, size, size, action));
 	}
 
 	/** A card button, clickable only where it shows inside the scrolling grid. */
@@ -291,8 +411,13 @@ final class SettingsPanel {
 		if (bottom > top) hits.add(new Hit(x, top, w, bottom - top, action));
 	}
 
-	/** The module's item at 2x, or its first letter on a tile where items can't be drawn yet. */
-	private static void icon(Gfx g, Module m, float x, float y) {
+	/**
+	 * The module's line icon in a 32-pixel box. Where the version can't draw icons, its item at 2x, or
+	 * its first letter on a tile where items can't be drawn yet.
+	 */
+	private static void icon(Gfx g, Module m, float x, float y, int color) {
+		int off = (32 - Icons.BIG) / 2;
+		if (g.symbol(m.glyph, Math.round(x) + off, Math.round(y) + off, true, color)) return;
 		g.push(x, y, 2f);
 		boolean drawn = g.icon(m.icon, 0, 0);
 		if (!drawn) {
@@ -309,7 +434,7 @@ final class SettingsPanel {
 		g.fill(cx - 2, cy - 3, cx + 2, cy + 3, c);
 		g.fill(cx - 1, cy - 4, cx + 1, cy + 4, c);
 		g.fill(cx - 4, cy - 1, cx + 4, cy + 1, c);
-		g.fill(cx - 1, cy - 1, cx + 1, cy + 1, BAR);
+		g.fill(cx - 1, cy - 1, cx + 1, cy + 1, CARD_HOT);
 	}
 
 	// ---- Module page --------------------------------------------------------------------------
@@ -319,23 +444,15 @@ final class SettingsPanel {
 	private void options(Gfx g, final Module m, int mx, int my, float dt) {
 		final Config c = NovexCore.config;
 		int x = GRID_X, w = W - GRID_X - 12;
-		float f = fade("back", hot(mx, my, x, HEAD + 10, 54, 16), dt);
-		Shapes.round(g, x, HEAD + 10, x + 54, HEAD + 26, 8, mix(0xFF2A3036, 0xFF3A4048, f));
-		spaced(g, "< BACK", x + 8, HEAD + 14, TEXT, 1, false);
-		hits.add(new Hit(x, HEAD + 10, 54, 16, new Runnable() {
-			public void run() {
-				page = null;
-			}
-		}));
 
-		icon(g, m, x, HEAD + 34);
-		g.push(x + 40, HEAD + 37, 1.4f);
+		icon(g, m, x, HEAD + 6, TEXT);
+		g.push(x + 40, HEAD + 9, 1.4f);
 		g.text(m.label, 0, 0, TEXT, true);
 		g.pop();
-		g.text(m.description, x + 40, HEAD + 54, MUTED, false);
-		g.fill(x, HEAD + 72, x + w, HEAD + 73, LINE);
+		g.text(m.description, x + 40, HEAD + 26, MUTED, false);
+		g.fill(x, HEAD + 44, x + w, HEAD + 45, LINE);
 
-		rowY = HEAD + 80;
+		rowY = HEAD + 52;
 		toggleRow(g, "Enabled", m.get(c), x, w, mx, my, dt, new Runnable() {
 			public void run() {
 				m.set(c, !m.get(c));
@@ -362,6 +479,16 @@ final class SettingsPanel {
 						c.cameraStabilizeStrength = v;
 					}
 				});
+				break;
+			case SMOOTH_EATING:
+				cycleRow(g, "Style", c.eatingStyle == 1 ? "Ripping" : "Smooth", x, w, mx, my, dt, new Runnable() {
+					public void run() {
+						c.eatingStyle = c.eatingStyle == 1 ? 0 : 1;
+					}
+				});
+				break;
+			case MUSIC:
+				if (c.music) nowPlaying(g, x, w, mx, my, dt);
 				break;
 			case SIDEBAR:
 				toggleRow(g, "Score numbers", c.sidebarNumbers, x, w, mx, my, dt, new Runnable() {
@@ -419,17 +546,23 @@ final class SettingsPanel {
 	}
 
 	private void rowBox(Gfx g, int x, int w) {
-		Shapes.round(g, x, rowY, x + w, rowY + 20, 6, 0xFF181C21);
+		// OneConfig's setting rows: a component tile with a hairline border.
+		Shapes.round(g, x, rowY, x + w, rowY + 20, R_SM * 1.5f, 0xFF1A2229);
+		Shapes.outline(g, x, rowY, x + w, rowY + 20, R_SM * 1.5f, 1, LINE);
 	}
 
 	private void toggleRow(Gfx g, String text, boolean on, int x, int w, int mx, int my, float dt, Runnable action) {
 		rowBox(g, x, w);
 		label(g, text, x);
-		int bw = 70, bx = x + w - bw - 3;
-		float f = fade("row" + text, hot(mx, my, bx, rowY + 3, bw, 14), dt);
-		Shapes.round(g, bx, rowY + 3, bx + bw, rowY + 17, 7, on ? mix(ON, ON_HOT, f) : mix(OFF, OFF_HOT, f));
-		centeredSpaced(g, on ? "ENABLED" : "DISABLED", bx + bw / 2, rowY + 6, TEXT, 1);
-		hits.add(new Hit(bx, rowY + 3, bw, 14, saving(action)));
+		// OneConfig's switch: a pill whose thumb slides across as its color fades to the accent.
+		int bw = 18, bh = 10, bx = x + w - bw - 6, by = rowY + 5;
+		float f = fade("row" + text, hot(mx, my, bx - 2, rowY + 2, bw + 4, 16), dt);
+		float t = ease(fade("knob" + text, on, dt));
+		Shapes.round(g, bx, by, bx + bw, by + bh, bh / 2f, mix(mix(0xFF232D32, 0xFF2C3840, f), mix(ON, ON_HOT, f), t));
+		if (t < 0.98f) Shapes.outline(g, bx, by, bx + bw, by + bh, bh / 2f, 1, alpha(LINE, 1 - t));
+		float kx = bx + 2 + (bw - bh) * t;
+		Shapes.round(g, kx, by + 2, kx + bh - 4, by + bh - 2, (bh - 4) / 2f, 0xFFFFFFFF);
+		hits.add(new Hit(bx - 2, rowY + 2, bw + 4, 16, saving(action)));
 		rowY += 24;
 	}
 
@@ -438,7 +571,7 @@ final class SettingsPanel {
 		label(g, text, x);
 		int bw = Math.max(70, g.textWidth(value) + 16), bx = x + w - bw - 3;
 		float f = fade("row" + text, hot(mx, my, bx, rowY + 3, bw, 14), dt);
-		Shapes.round(g, bx, rowY + 3, bx + bw, rowY + 17, 7, mix(BAR, BAR_HOT, f));
+		Shapes.round(g, bx, rowY + 3, bx + bw, rowY + 17, R_SM, mix(0xFF232D32, 0xFF2C3840, f));
 		ClientGui.centered(g, value, bx + bw / 2, rowY + 6, TEXT, false);
 		hits.add(new Hit(bx, rowY + 3, bw, 14, saving(action)));
 		rowY += 24;
@@ -451,7 +584,7 @@ final class SettingsPanel {
 		for (int i = 0; i < 2; i++) {
 			int sx = i == 0 ? bx : bx + 56;
 			float f = fade("step" + text + i, hot(mx, my, sx, rowY + 3, 14, 14), dt);
-			Shapes.round(g, sx, rowY + 3, sx + 14, rowY + 17, 7, mix(BAR, BAR_HOT, f));
+			Shapes.round(g, sx, rowY + 3, sx + 14, rowY + 17, R_SM, mix(0xFF232D32, 0xFF2C3840, f));
 			ClientGui.centered(g, i == 0 ? "-" : "+", sx + 7, rowY + 6, TEXT, false);
 			hits.add(new Hit(sx, rowY + 3, 14, 14, saving(i == 0 ? down : up)));
 		}
@@ -464,8 +597,10 @@ final class SettingsPanel {
 		rowBox(g, x, w);
 		label(g, text, x);
 		int bw = 105, bx = x + w - bw - 33, step = bw / 21;
-		Shapes.round(g, bx, rowY + 7, bx + bw, rowY + 13, 3, OFF);
-		if (value > 0) Shapes.round(g, bx, rowY + 7, bx + bw * value / 100, rowY + 13, 3, ON);
+		Shapes.round(g, bx, rowY + 8, bx + bw, rowY + 12, 2, 0xFF232D32);
+		if (value > 0) Shapes.round(g, bx, rowY + 8, bx + bw * value / 100, rowY + 12, 2, ON);
+		float kx = bx + bw * value / 100f;
+		Shapes.round(g, kx - 3, rowY + 7, kx + 3, rowY + 13, 3, 0xFFFFFFFF);
 		ClientGui.centered(g, value + "%", x + w - 16, rowY + 6, TEXT, false);
 		for (int i = 0; i <= 20; i++) {
 			final int v = i * 5;
@@ -493,10 +628,12 @@ final class SettingsPanel {
 	private void clientSettings(Gfx g, int mx, int my, float dt) {
 		final Config c = NovexCore.config;
 		int x = GRID_X, w = W - GRID_X - 12;
-		g.push(x, HEAD + 12, 1.3f);
-		g.text("Client settings", 0, 0, TEXT, true);
-		g.pop();
-		rowY = HEAD + 34;
+		rowY = HEAD + 8;
+		toggleRow(g, "Custom home page", c.customHome, x, w, mx, my, dt, new Runnable() {
+			public void run() {
+				c.customHome = !c.customHome;
+			}
+		});
 		toggleRow(g, "Title screen button", c.titleButton, x, w, mx, my, dt, new Runnable() {
 			public void run() {
 				c.titleButton = !c.titleButton;
@@ -563,7 +700,7 @@ final class SettingsPanel {
 	private float fade(String key, boolean hot, float dt) {
 		Float v = fades.get(key);
 		float f = v == null ? 0f : v;
-		f += ((hot ? 1f : 0f) - f) * Math.min(1f, dt * 16f);
+		f += ((hot ? 1f : 0f) - f) * Math.min(1f, dt * 11f);
 		fades.put(key, f);
 		return f;
 	}

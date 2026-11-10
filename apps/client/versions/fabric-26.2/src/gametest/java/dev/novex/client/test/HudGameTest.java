@@ -13,6 +13,16 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 public class HudGameTest implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext ctx) {
+		// Custom home page (on by default): Novex's own title screen replaces Minecraft's.
+		ctx.waitTicks(40);
+		check(ctx.computeOnClient(mc -> mc.screen != null && mc.screen.getClass().getSimpleName().equals("NovexScreen")),
+				"The custom home page didn't replace the title screen");
+		ctx.takeScreenshot("novex-home");
+		// The rest starts from Minecraft's title screen; the home page comes back on after it.
+		ctx.runOnClient(mc -> {
+			dev.novex.client.core.NovexCore.config.customHome = false;
+			mc.gui.setScreen(new net.minecraft.client.gui.screens.TitleScreen());
+		});
 		// Title screen: the Novex Client button opens the settings. Buttons ignore clicks while the
 		// title screen fades in, so wait that out first.
 		ctx.waitTicks(40);
@@ -37,6 +47,7 @@ public class HudGameTest implements FabricClientGameTest {
 		ctx.waitTicks(3);
 		check(ctx.computeOnClient(mc -> mc.gui.screen() instanceof net.minecraft.client.gui.screens.TitleScreen),
 				"Right Shift didn't close back to the title screen");
+		ctx.runOnClient(mc -> dev.novex.client.core.NovexCore.config.customHome = true);
 
 		try (TestSingleplayerContext world = ctx.worldBuilder().create()) {
 			world.getConnection().waitForChunksRender(true, 1200);
@@ -100,6 +111,12 @@ public class HudGameTest implements FabricClientGameTest {
 				NovexCore.config.hud.clear();
 			});
 		}
+		// Fabric checks that a test ends on Minecraft's own title screen.
+		ctx.runOnClient(mc -> {
+			dev.novex.client.core.NovexCore.config.customHome = false;
+			mc.gui.setScreen(new net.minecraft.client.gui.screens.TitleScreen());
+		});
+		ctx.waitTicks(2);
 	}
 
 	/**

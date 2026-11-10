@@ -40,6 +40,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(id) => Some(instances::load(&paths, id)?),
         None => None,
     };
+    // NOVEX_SWITCH=1 moves an existing old Forge instance to Ornithe first.
+    let existing = match (existing, std::env::var("NOVEX_SWITCH")) {
+        (Some(inst), Ok(_)) => {
+            let inst =
+                novex_launcher_lib::client::switch_to_ornithe(&http, &paths, &inst.id).await?;
+            println!(
+                "== switched to Ornithe {}",
+                loader_version.as_deref().unwrap_or("")
+            );
+            Some(inst)
+        }
+        (e, _) => e,
+    };
     let version = match &existing {
         Some(inst) => {
             loader = inst.loader;
@@ -96,6 +109,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         natives_dir: &natives,
     };
     // NOVEX_JVM_ARGS adds JVM flags and NOVEX_JAVA picks a Java binary, for trying out fixes.
+    // NOVEX_CLIENT=1 turns on Novex Client (with its companion mods) for an existing instance first.
+    if let (Some(inst), Ok(_)) = (&existing, std::env::var("NOVEX_CLIENT")) {
+        novex_launcher_lib::client::enable(&http, &paths, inst).await?;
+        println!("== Novex Client on");
+    }
+    // The same pre-launch step as the app: keep the client and its companion mods current.
+    if let Some(inst) = &existing {
+        use novex_launcher_lib::client;
+        client::sync(&paths, inst)?;
+        if client::wants_companions(&paths, inst) {
+            client::install_companions(&http, &paths, inst, false).await?;
+        }
+    }
     let settings = Settings {
         jvm_args: std::env::var("NOVEX_JVM_ARGS").unwrap_or_default(),
         java_path: std::env::var("NOVEX_JAVA").ok(),

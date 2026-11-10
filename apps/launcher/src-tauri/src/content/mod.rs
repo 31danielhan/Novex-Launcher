@@ -257,7 +257,7 @@ pub struct InstalledItem {
 const DISABLED: &str = ".disabled";
 
 /// Rejects names that could escape the content folder.
-fn safe_file_name(name: &str) -> Result<&str> {
+pub(crate) fn safe_file_name(name: &str) -> Result<&str> {
     if name.is_empty() || name.contains(['/', '\\']) || name.starts_with('.') {
         return Err(msg(format!("Unsafe file name: {name}")));
     }

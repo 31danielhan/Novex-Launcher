@@ -41,6 +41,11 @@ pub struct Instance {
     /// Write the launcher's game settings into this instance before it launches.
     #[serde(default = "yes")]
     pub use_game_options: bool,
+    /// Install the performance mods (OneClient's set: Sodium, Lithium…, or Pylon, Argentum… on
+    /// Ornithe). `None`, for instances from before this was a choice, means they come with Novex
+    /// Client, and always on Ornithe.
+    #[serde(default)]
+    pub performance_mods: Option<bool>,
 }
 
 fn yes() -> bool {
@@ -83,6 +88,8 @@ pub struct InstancePatch {
     pub jvm_args: Option<String>,
     #[serde(default)]
     pub use_game_options: Option<bool>,
+    #[serde(default)]
+    pub performance_mods: Option<bool>,
 }
 
 pub fn dir(paths: &Paths, id: &str) -> PathBuf {
@@ -215,6 +222,7 @@ pub fn create(
         jvm_args: None,
         modpack,
         use_game_options: true,
+        performance_mods: None,
     };
     save(paths, &inst)?;
     std::fs::create_dir_all(game_dir(paths, &inst.id))?;
@@ -231,8 +239,14 @@ pub fn instance_create(
     version: String,
     loader: LoaderKind,
     loader_version: Option<String>,
+    performance_mods: Option<bool>,
 ) -> Result<Instance> {
-    create(&state.paths, &name, version, loader, loader_version, None)
+    let mut inst = create(&state.paths, &name, version, loader, loader_version, None)?;
+    if performance_mods.is_some() {
+        inst.performance_mods = performance_mods;
+        save(&state.paths, &inst)?;
+    }
+    Ok(inst)
 }
 
 #[tauri::command]
@@ -255,6 +269,9 @@ pub fn instance_update(
     inst.jvm_args = clean(patch.jvm_args);
     if let Some(v) = patch.use_game_options {
         inst.use_game_options = v;
+    }
+    if patch.performance_mods.is_some() {
+        inst.performance_mods = patch.performance_mods;
     }
     save(&state.paths, &inst)?;
     Ok(inst)
@@ -319,6 +336,39 @@ pub fn instance_folder(
 
 /// The end of the game's `logs/latest.log`, for showing the last session before this
 /// launcher run streamed anything.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct World {
+    name: String,
+    path: String,
+    last_played: u64,
+}
+
+/// The instance's singleplayer worlds, most recently played first.
+#[tauri::command]
+pub fn instance_worlds(state: State<'_, AppState>, id: String) -> Result<Vec<World>> {
+    load(&state.paths, &id)?;
+    let Ok(entries) = std::fs::read_dir(game_dir(&state.paths, &id).join("saves")) else {
+        return Ok(Vec::new());
+    };
+    let mut worlds: Vec<World> = entries
+        .flatten()
+        .filter_map(|e| {
+            let level = e.path().join("level.dat");
+            let time = std::fs::metadata(level).and_then(|m| m.modified()).ok()?;
+            Some(World {
+                name: e.file_name().to_string_lossy().into_owned(),
+                path: e.path().to_string_lossy().into_owned(),
+                last_played: time
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |d| d.as_secs()),
+            })
+        })
+        .collect();
+    worlds.sort_by_key(|w| std::cmp::Reverse(w.last_played));
+    Ok(worlds)
+}
+
 #[tauri::command]
 pub fn instance_latest_log(state: State<'_, AppState>, id: String) -> Result<Vec<String>> {
     load(&state.paths, &id)?;
