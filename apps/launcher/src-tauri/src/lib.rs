@@ -34,6 +34,8 @@ pub struct AppState {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+mod glass;
+
 pub fn run() {
     let ui = update::ui::UiState::default();
     let mut context = tauri::generate_context!();
@@ -77,6 +79,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            glass::window_glass,
             platform::system_info,
             platform::open_path,
             auth::accounts_list,

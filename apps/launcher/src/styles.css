@@ -276,6 +276,16 @@
   --accent: 234 88 12;
   --accent-fg: 255 255 255;
 }
+:root[data-palette="gold"] {
+  --glow-1: 251 191 36;
+  --glow-2: 245 158 11;
+  --glow-3: 253 230 138;
+  --accent: 180 115 9;
+  --accent-fg: 255 255 255;
+}
+:root[data-palette="gold"][data-theme="dark"] {
+  --accent: 202 138 4;
+}
 :root[data-palette="forest"] {
   --glow-1: 22 163 74;
   --glow-2: 163 230 53;
@@ -286,6 +296,9 @@
 
 .backdrop {
   display: none;
+}
+:root[data-glass] body {
+  background-color: rgb(var(--bg) / var(--window-alpha, 0.82));
 }
 :root[data-glass] .backdrop {
   display: block;
@@ -312,6 +325,10 @@
   body,
   #root {
     height: 100%;
+  }
+
+  html {
+    background: transparent;
   }
 
   body {

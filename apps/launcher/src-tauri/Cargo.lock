@@ -2462,6 +2462,7 @@ dependencies = [
  "keyring",
  "md-5",
  "minisign-verify",
+ "objc2",
  "reqwest 0.12.28",
  "semver",
  "serde",

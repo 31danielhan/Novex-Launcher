@@ -17,19 +17,27 @@ import { Button, Card, cx, Segmented, Toggle } from "../components/ui";
 function Row({
   label,
   hint,
+  stacked,
   children,
 }: {
   label: string;
   hint?: string;
+  /** The control goes under the label, full width, for wide ones like the theme picker. */
+  stacked?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className="hairline flex items-center justify-between gap-6 border-b px-5 py-4 last:border-b-0">
+    <div
+      className={cx(
+        "hairline flex border-b px-5 py-4 last:border-b-0",
+        stacked ? "flex-col gap-3" : "items-center justify-between gap-6",
+      )}
+    >
       <div className="min-w-0">
         <p className="font-medium">{label}</p>
         {hint && <p className="text-[13px] text-muted">{hint}</p>}
       </div>
-      <div className="min-w-0 shrink-0 text-right text-[13px] text-muted">
+      <div className={cx("min-w-0 text-[13px] text-muted", stacked ? "" : "shrink-0 text-right")}>
         {children}
       </div>
     </div>
@@ -271,8 +279,17 @@ function Updates({ s, save }: SettingsProps) {
 type Tab = "general" | "java" | "content" | "updates" | "about";
 
 export function SettingsScreen() {
-  const { theme, setTheme, palette, setPalette, language, setLanguage } =
-    useApp();
+  const {
+    theme,
+    setTheme,
+    palette,
+    setPalette,
+    language,
+    setLanguage,
+    windowOpacity,
+    setWindowOpacity,
+  } = useApp();
+  const glass = !["poly", "pcl", "prism", "minecraft"].includes(palette);
   const settings = useSettings();
   const { accounts, activeAccount, openAccounts } = useLauncher();
   const info = useSystemInfo();
@@ -308,12 +325,14 @@ export function SettingsScreen() {
           </Card>
           <Card>
             <Row
+              stacked
               label={t("Theme")}
               hint={t(
-                "PCL, Prism and Minecraft are flat; the others use liquid-glass panels.",
+                "Poly, PCL, Prism and Minecraft are flat; the others use liquid-glass panels you can see through.",
               )}
             >
-              <div className="flex gap-2">
+              {/* Wraps onto a second line when the window is too narrow for every theme. */}
+              <div className="flex flex-wrap gap-x-2 gap-y-3">
                 {palettes.map((p) => (
                   <button
                     key={p.value}
@@ -338,6 +357,26 @@ export function SettingsScreen() {
                 ))}
               </div>
             </Row>
+            {glass && (
+              <Row
+                label={t("Window opacity")}
+                hint={t("How much of the desktop shows through glass themes.")}
+              >
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={50}
+                    max={100}
+                    step={1}
+                    value={windowOpacity}
+                    onChange={(e) => setWindowOpacity(Number(e.target.value))}
+                    className="w-40 accent-[rgb(var(--accent))]"
+                    aria-label={t("Window opacity")}
+                  />
+                  <span className="w-12 text-right font-medium text-fg">{windowOpacity}%</span>
+                </div>
+              </Row>
+            )}
             <Row label={t("Mode")}>
               <Segmented<ThemePref>
                 value={theme}
