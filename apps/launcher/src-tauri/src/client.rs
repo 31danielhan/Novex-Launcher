@@ -411,7 +411,10 @@ pub async fn install_companions(
             Err(e) => eprintln!("[client] couldn't download from {}: {e}", c.repo),
         }
     }
-    if cfg!(target_os = "macos") && !offered.iter().any(|k| k == HIGH_DPI) && high_dpi_screen(&mods)? {
+    if cfg!(target_os = "macos")
+        && !offered.iter().any(|k| k == HIGH_DPI)
+        && high_dpi_screen(&mods)?
+    {
         offered.push(HIGH_DPI.to_string());
     }
     std::fs::create_dir_all(instances::dir(paths, &inst.id))?;

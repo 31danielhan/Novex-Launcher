@@ -32,7 +32,9 @@ pub fn window_glass(window: tauri::WebviewWindow, on: bool) -> Result<(), String
 unsafe fn fade(ns_window: *mut objc2::runtime::AnyObject) {
     use objc2::msg_send;
     use objc2::runtime::{AnyClass, AnyObject, Bool};
-    let Some(class) = AnyClass::get(c"NSVisualEffectView") else { return };
+    let Some(class) = AnyClass::get(c"NSVisualEffectView") else {
+        return;
+    };
     let content: *mut AnyObject = msg_send![ns_window, contentView];
     if content.is_null() {
         return;
