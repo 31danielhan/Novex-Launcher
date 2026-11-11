@@ -128,7 +128,7 @@ function JavaSettings({ s, setS, save }: SettingsProps) {
             e.target.value !== s.jvmArgs &&
             save({ ...s, jvmArgs: e.target.value })
           }
-          placeholder="-XX:+UseG1GC"
+          placeholder={t("-XX:+UseG1GC")}
           className={`${inputClass} w-64 font-mono`}
           spellCheck={false}
         />
@@ -221,8 +221,8 @@ function Updates({ s, save }: SettingsProps) {
             ? t("This build wasn't given a GitHub repository to update from.")
             : available
               ? available.kind === "app"
-                ? `Version ${available.update.version} is available.`
-                : `A new interface (${available.version}) is available.`
+                ? t("Version {version} is available.", { version: available.update.version })
+                : t("A new interface ({version}) is available.", { version: available.version })
               : t(
                   "Updates come from GitHub and are checked against Novex's signing key.",
                 )
@@ -250,9 +250,9 @@ function Updates({ s, save }: SettingsProps) {
       >
         {info.uiVersion ? (
           <span className="flex items-center gap-3">
-            {info.uiVersion} (downloaded)
+            {t("{version} (downloaded)", { version: info.uiVersion })}
             <Button variant="ghost" onClick={useBuiltIn}>
-              Use built-in
+              {t("Use built-in")}
             </Button>
           </span>
         ) : (
@@ -338,7 +338,7 @@ export function SettingsScreen() {
                     key={p.value}
                     onClick={() => setPalette(p.value)}
                     aria-pressed={palette === p.value}
-                    title={p.label}
+                    title={t(p.label)}
                     className="group flex w-14 flex-col items-center gap-1.5 text-[11px]"
                   >
                     <span
@@ -351,7 +351,7 @@ export function SettingsScreen() {
                       style={{ background: p.swatch }}
                     />
                     <span className={palette === p.value ? "text-fg" : ""}>
-                      {p.label}
+                      {t(p.label)}
                     </span>
                   </button>
                 ))}
@@ -455,22 +455,11 @@ export function SettingsScreen() {
             <div className="px-4 py-3 text-[12px] text-muted">
               <p className="mb-1 font-medium text-fg">{t("Image credits")}</p>
               <p className="select-text">
-                Version backgrounds are screenshots by Xbox México and Xbox
-                MENA, from Wikimedia Commons
-                (commons.wikimedia.org/wiki/Category:Screenshots_of_Minecraft),
-                licensed under CC BY 3.0 (creativecommons.org/licenses/by/3.0).
-                Cropped and resized. Novex is not affiliated with or endorsed by
-                Mojang, Microsoft or Xbox.
+                {t("Version backgrounds are screenshots by Xbox México and Xbox MENA, from Wikimedia Commons (commons.wikimedia.org/wiki/Category:Screenshots_of_Minecraft), licensed under CC BY 3.0 (creativecommons.org/licenses/by/3.0). Cropped and resized. Novex is not affiliated with or endorsed by Mojang, Microsoft or Xbox.")}
               </p>
               <p className="mb-1 mt-3 font-medium text-fg">{t("Credits")}</p>
               <p className="select-text">
-                Novex is free software under the GNU GPL v3.0. Its launcher and
-                in-game menu draw on OneLauncher and OneClient by Polyfrost
-                (github.com/Polyfrost/OneLauncher, GPL-3.0), and the in-game menu is
-                adapted from OneConfig by Polyfrost (LGPL-3.0, used under the GPL-3.0). The Minecraft theme
-                uses Monocraft by Idrees Hassan (SIL Open Font License 1.1), and the
-                in-game menu uses Poppins by Indian Type Foundry (SIL Open Font
-                License 1.1). Novex is not affiliated with or endorsed by Polyfrost.
+                {t("Novex is free software under the GNU GPL v3.0. Its launcher and in-game menu draw on OneLauncher and OneClient by Polyfrost (github.com/Polyfrost/OneLauncher, GPL-3.0), and the in-game menu is adapted from OneConfig by Polyfrost (LGPL-3.0, used under the GPL-3.0). The Minecraft theme uses Monocraft by Idrees Hassan (SIL Open Font License 1.1), and the in-game menu uses Poppins by Indian Type Foundry (SIL Open Font License 1.1). Novex is not affiliated with or endorsed by Polyfrost.")}
               </p>
             </div>
           </Card>

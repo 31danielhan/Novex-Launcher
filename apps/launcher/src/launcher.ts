@@ -183,7 +183,7 @@ export const useLauncher = create<LauncherState>((set, get) => ({
 
   installModpack: async (source, projectId, versionId, title) => {
     if (get().pack) {
-      set({ error: "Wait for the current modpack to finish installing." });
+      set({ error: t("Wait for the current modpack to finish installing.") });
       return false;
     }
     set({ pack: { title, stage: "Starting", done: 0, total: 0 } });
@@ -201,15 +201,15 @@ export const useLauncher = create<LauncherState>((set, get) => ({
 
   importModpack: async () => {
     if (get().pack) {
-      set({ error: "Wait for the current modpack to finish installing." });
+      set({ error: t("Wait for the current modpack to finish installing.") });
       return;
     }
     const path = await open({
-      title: "Import a modpack",
-      filters: [{ name: "Modpacks", extensions: ["mrpack", "zip"] }],
+      title: t("Import a modpack"),
+      filters: [{ name: t("Modpacks"), extensions: ["mrpack", "zip"] }],
     });
     if (typeof path !== "string") return;
-    set({ pack: { title: path.split(/[\\/]/).pop() ?? "Modpack", stage: "Starting", done: 0, total: 0 } });
+    set({ pack: { title: path.split(/[\\/]/).pop() ?? t("Modpack"), stage: "Starting", done: 0, total: 0 } });
     try {
       finishPack(await api.importModpack(path));
     } catch (e) {
@@ -235,7 +235,7 @@ export const useLauncher = create<LauncherState>((set, get) => ({
       });
       set({ available: ui ? { kind: "ui", version: ui.version } : null });
       if (ui) notifyUpdate(t("A new interface ({version}) is available.", { version: ui.version }), `ui/${ui.version}`);
-      if (manual && !ui) set({ notice: "Novex is up to date." });
+      if (manual && !ui) set({ notice: t("Novex is up to date.") });
     } catch (e) {
       if (manual) set({ error: errorText(e) });
     }
@@ -314,8 +314,12 @@ async function installAtStartup() {
 function finishPack({ instance, skipped }: { instance: Instance; skipped: string[] }) {
   useLauncher.setState({
     notice: skipped.length
-      ? `${instance.name} is installed, but ${skipped.length} file(s) must be downloaded by hand from CurseForge: ${skipped.join(", ")}.`
-      : `${instance.name} is installed and ready to play.`,
+      ? t("{name} is installed, but {count} file(s) must be downloaded by hand from CurseForge: {files}.", {
+          name: instance.name,
+          count: skipped.length,
+          files: skipped.join(", "),
+        })
+      : t("{name} is installed and ready to play.", { name: instance.name }),
   });
 }
 
@@ -367,7 +371,7 @@ export async function initLauncher() {
       // A non-zero exit right after launch usually means a crash.
       error:
         p.code !== null && p.code !== 0
-          ? `Minecraft closed with exit code ${p.code}. Open the logs to see why.`
+          ? t("Minecraft closed with exit code {code}. Open the logs to see why.", { code: p.code })
           : s.error,
     }));
     refresh();

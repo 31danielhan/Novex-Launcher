@@ -86,10 +86,11 @@ final class HomeMenu {
 		button(g, 3, "Options", Icons.SETTINGS, bx, y, half, mx, my, dt, time, ClientGui.Action.OPTIONS);
 		button(g, 4, "Quit Game", Icons.POWER, bx + bw - half, y, half, mx, my, dt, time, ClientGui.Action.QUIT);
 
-		text(g, "Novex Client", 2, g.height() - 10, MUTED, ease((time - 0.5f) / INTRO), false);
+		text(g, Lang.tr("Novex Client"), 2, g.height() - 10, MUTED, ease((time - 0.5f) / INTRO), false);
 	}
 
 	private int button(Gfx g, int i, String label, int icon, int x, int y0, int w, int mx, int my, float dt, float time, final ClientGui.Action action) {
+		label = Lang.tr(label);
 		// Each button rises into place a moment after the one before.
 		float in = ease((time - 0.12f - i * STAGGER) / INTRO);
 		int y = y0 + Math.round(12 * (1 - in));

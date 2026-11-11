@@ -23,17 +23,9 @@ use store::{Account, AccountKind, StoredAccount};
 pub struct AccountsView {
     active: Option<String>,
     accounts: Vec<Account>,
-    /// Whether an offline account can be added right now.
+    /// Whether an offline account can be added. Always true: offline play needs no Microsoft
+    /// account. Kept so older interface bundles still read it.
     offline_allowed: bool,
-}
-
-fn offline_allowed(store: &store::AccountStore) -> bool {
-    cfg!(debug_assertions)
-        || store
-            .data
-            .accounts
-            .iter()
-            .any(|a| a.account.kind == AccountKind::Microsoft)
 }
 
 /// What the game needs from the active account at launch.
@@ -62,7 +54,7 @@ pub async fn accounts_list(state: State<'_, AppState>) -> Result<AccountsView> {
     Ok(AccountsView {
         active: store.data.active.clone(),
         accounts: store.public(),
-        offline_allowed: offline_allowed(&store),
+        offline_allowed: true,
     })
 }
 
@@ -95,11 +87,6 @@ pub async fn account_add_offline(state: State<'_, AppState>, name: String) -> Re
         kind: AccountKind::Offline,
     };
     let mut store = state.accounts.lock().await;
-    if !offline_allowed(&store) {
-        return Err(msg(
-            "Sign in with a Microsoft account that owns Minecraft first. Then you can add offline accounts.",
-        ));
-    }
     if let Some(existing) = store
         .data
         .accounts

@@ -100,7 +100,7 @@ public final class Hud {
 		Config c = NovexCore.config;
 		if (c.buildLimit) buildLimit(g, game);
 		if (NovexCore.zooming) {
-			String z = "Zoom " + Math.round(c.zoomFactor) + "x";
+			String z = Lang.tr("Zoom {n}x", "n", Math.round(c.zoomFactor));
 			g.text(z, (g.width() - g.textWidth(z)) / 2, g.height() / 2 + 12, ACCENT, true);
 		}
 	}
@@ -109,7 +109,7 @@ public final class Hud {
 	private static void buildLimit(Gfx g, Game game) {
 		int left = game.blocksToBuildLimit();
 		if (left < 0 || left > 10) return;
-		String s = left == 0 ? "Build limit reached" : left == 1 ? "1 block to build limit" : left + " blocks to build limit";
+		String s = left == 0 ? Lang.tr("Build limit reached") : left == 1 ? Lang.tr("1 block to build limit") : Lang.tr("{n} blocks to build limit", "n", left);
 		g.text(s, (g.width() - g.textWidth(s)) / 2, g.height() / 2 + 24, left <= 3 ? LOW : TEXT, true);
 	}
 
@@ -172,7 +172,7 @@ public final class Hud {
 					? String.format(java.util.Locale.ROOT, f + ", " + f + ", " + f, game.x(), game.y(), game.z())
 					: "128, 64, -256";
 			if (!c.coordinatesFacing) return new String[] {at};
-			return new String[] {at, "Facing " + (game.active() ? game.facing() : "north")};
+			return new String[] {at, Lang.tr("Facing {dir}", "dir", Lang.tr(game.active() ? game.facing() : "north"))};
 		}
 
 		int width(Gfx g, Game game, boolean preview) {
@@ -222,8 +222,8 @@ public final class Hud {
 
 		void draw(Gfx g, Game game, boolean preview) {
 			boolean real = NowPlaying.present();
-			String title = real ? NowPlaying.title : "Nothing playing";
-			String by = !real ? (NowPlaying.supported() ? "Play something in any app" : "Needs macOS")
+			String title = real ? NowPlaying.title : Lang.tr("Nothing playing");
+			String by = !real ? (NowPlaying.supported() ? Lang.tr("Play something in any app") : Lang.tr("Needs macOS"))
 					: NowPlaying.artist.isEmpty() ? NowPlaying.app : NowPlaying.artist + " \u00b7 " + NowPlaying.app;
 			Shapes.round(g, 0, 0, W, H, 5, plateColor() | 0x000A0C10);
 
@@ -282,7 +282,7 @@ public final class Hud {
 				key(g, live && game.down(Game.Key.USE), String.valueOf(Clicks.right()), half + GAP, row, half, S);
 				row += S + GAP;
 			}
-			if (c.keystrokesJump) key(g, live && game.down(Game.Key.JUMP), "Jump", 0, row, 3 * S + 2 * GAP, 12);
+			if (c.keystrokesJump) key(g, live && game.down(Game.Key.JUMP), Lang.tr("Jump"), 0, row, 3 * S + 2 * GAP, 12);
 		}
 
 		float[] defaultSpot(Gfx g, Game game) {

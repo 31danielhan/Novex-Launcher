@@ -108,7 +108,7 @@ final class SettingsPanel {
 	/** Back arrow and page title, the search box and the close button, above the content. */
 	private void header(Gfx g, int mx, int my, float dt) {
 		boolean grid = tab == Tab.MODS && page == null;
-		String title = tab == Tab.SETTINGS ? "Settings" : page != null ? page.label : "Modules";
+		String title = tab == Tab.SETTINGS ? Lang.tr("Settings") : page != null ? page.title() : Lang.tr("Modules");
 		int tx = GRID_X;
 		if (page != null) {
 			float f = fade("back", hot(mx, my, tx - 2, 9, 16, 18), dt);
@@ -129,7 +129,7 @@ final class SettingsPanel {
 			Shapes.outline(g, sx, 9, sx + sw, 25, R_SM, 1, LINE);
 			lens(g, sx + 9, 17);
 			boolean caret = (System.currentTimeMillis() / 500) % 2 == 0;
-			if (search.isEmpty()) g.text("Search modules...", sx + 17, 13, MUTED, false);
+			if (search.isEmpty()) g.text(Lang.tr("Search modules..."), sx + 17, 13, MUTED, false);
 			else g.text(ClientGui.fit(g, search, sw - 26) + (caret ? "_" : ""), sx + 17, 13, TEXT, false);
 		}
 		float f = fade("close", hot(mx, my, W - 26, 8, 18, 18), dt);
@@ -203,8 +203,8 @@ final class SettingsPanel {
 		});
 
 		g.fill(8, H - 34, SIDE - 8, H - 33, LINE);
-		g.text("Novex Client", 12, H - 26, SOFT, false);
-		g.text("Right Shift", 12, H - 15, MUTED, false);
+		g.text(Lang.tr("Novex Client"), 12, H - 26, SOFT, false);
+		g.text(Lang.tr("Right Shift"), 12, H - 15, MUTED, false);
 	}
 
 	private static int section(Gfx g, String label, int y) {
@@ -223,7 +223,7 @@ final class SettingsPanel {
 			g.icon(icon, 0, 0);
 			g.pop();
 		}
-		g.text(label, 28, y + 5, on ? TEXT : SOFT, false);
+		g.text(Lang.tr(label), 28, y + 5, on ? TEXT : SOFT, false);
 		hits.add(new Hit(6, y, SIDE - 12, 18, action));
 		return y + 20;
 	}
@@ -233,7 +233,8 @@ final class SettingsPanel {
 		String q = search.trim().toLowerCase();
 		for (Module m : NovexCore.modules) {
 			if (filter != null && m.category != filter) continue;
-			if (!q.isEmpty() && !m.label.toLowerCase().contains(q) && !m.description.toLowerCase().contains(q)) continue;
+			if (!q.isEmpty() && !m.label.toLowerCase().contains(q) && !m.description.toLowerCase().contains(q)
+					&& !m.title().toLowerCase().contains(q) && !m.about().toLowerCase().contains(q)) continue;
 			list.add(m);
 		}
 		return list;
@@ -263,7 +264,7 @@ final class SettingsPanel {
 		g.clip((int) (px + GRID_X * ps), (int) (py + GRID_TOP * ps), (int) Math.ceil(px + (W - 8) * ps),
 				(int) Math.ceil(py + (H - 8) * ps));
 		g.push(px, py, ps);
-		if (list.isEmpty()) ClientGui.centered(g, "No modules match \"" + search + "\"", GRID_X + (W - GRID_X) / 2, GRID_TOP + 40, MUTED, false);
+		if (list.isEmpty()) ClientGui.centered(g, Lang.tr("No modules match \"{query}\"", "query", search), GRID_X + (W - GRID_X) / 2, GRID_TOP + 40, MUTED, false);
 		boolean inView = my >= GRID_TOP && my < H - 8;
 		// A new set of cards cascades in: each rises into place a moment after the one before.
 		String key = tab + "|" + filter + "|" + search;
@@ -299,7 +300,7 @@ final class SettingsPanel {
 		Module.Category[] cats = Module.Category.values();
 		for (int i = -1; i < cats.length; i++) {
 			final Module.Category cat = i < 0 ? null : cats[i];
-			String label = cat == null ? "All" : cat.label;
+			String label = cat == null ? Lang.tr("All") : cat.title();
 			int w = g.textWidth(label) + 14;
 			boolean on = filter == cat;
 			float f = fade("chip" + label, hot(mx, my, x, y, w, 15), dt);
@@ -329,7 +330,7 @@ final class SettingsPanel {
 		Shapes.round(g, x + 2, bar, x + w - 2, y + CARD_H - 2, R_SM, R_SM, R_MD - 2, R_MD - 2,
 				mix(mix(0xFF27323A, 0xFF2E3A43, f), mix(ON, ON_HOT, f), sw));
 		icon(g, m, x + w / 2f - 16, y + 5 - f, on ? TEXT : SOFT);
-		ClientGui.centered(g, ClientGui.fit(g, m.label, w - 8), x + w / 2, bar + 5, on ? TEXT : SOFT, false);
+		ClientGui.centered(g, ClientGui.fit(g, m.title(), w - 8), x + w / 2, bar + 5, on ? TEXT : SOFT, false);
 
 		// The gear is first in the hit list, so it wins over the card behind it.
 		int gx = x + w - 15, gy = y + 3;
@@ -359,13 +360,13 @@ final class SettingsPanel {
 		Shapes.round(g, x, y, x + w, y + h, R_MD, CARD);
 		Shapes.outline(g, x, y, x + w, y + h, R_MD, 1, LINE);
 		boolean real = NowPlaying.present();
-		String title = !NowPlaying.supported() ? "Needs macOS" : real ? NowPlaying.title : "Nothing playing";
-		String sub = !real ? "Start music or a video in any app." : NowPlaying.artist.isEmpty() ? "" : NowPlaying.artist;
+		String title = !NowPlaying.supported() ? Lang.tr("Needs macOS") : real ? NowPlaying.title : Lang.tr("Nothing playing");
+		String sub = !real ? Lang.tr("Start music or a video in any app.") : NowPlaying.artist.isEmpty() ? "" : NowPlaying.artist;
 		g.symbol(Icons.MUSIC, x + 10, y + 10, false, real && NowPlaying.playing ? ON_HOT : MUTED);
 		g.text(ClientGui.fit(g, title, w - 150), x + 28, y + 9, TEXT, false);
 		g.text(ClientGui.fit(g, sub, w - 150), x + 28, y + 20, SOFT, false);
 		if (real) {
-			String where = "Playing in " + NowPlaying.app;
+			String where = Lang.tr("Playing in {app}", "app", NowPlaying.app);
 			g.text(where, x + w - 10 - g.textWidth(where), y + 9, MUTED, false);
 		}
 		// Progress, with the time on either side.
@@ -422,7 +423,7 @@ final class SettingsPanel {
 		boolean drawn = g.icon(m.icon, 0, 0);
 		if (!drawn) {
 			Shapes.round(g, 0, 0, 16, 16, 4, 0xFF2A3036);
-			ClientGui.centered(g, m.label.substring(0, 1), 8, 4, SOFT, false);
+			ClientGui.centered(g, m.title().substring(0, 1), 8, 4, SOFT, false);
 		}
 		g.pop();
 	}
@@ -447,9 +448,9 @@ final class SettingsPanel {
 
 		icon(g, m, x, HEAD + 6, TEXT);
 		g.push(x + 40, HEAD + 9, 1.4f);
-		g.text(m.label, 0, 0, TEXT, true);
+		g.text(m.title(), 0, 0, TEXT, true);
 		g.pop();
-		g.text(m.description, x + 40, HEAD + 26, MUTED, false);
+		g.text(m.about(), x + 40, HEAD + 26, MUTED, false);
 		g.fill(x, HEAD + 44, x + w, HEAD + 45, LINE);
 
 		rowY = HEAD + 52;
@@ -542,7 +543,7 @@ final class SettingsPanel {
 	}
 
 	private void label(Gfx g, String text, int x) {
-		g.text(text, x + 8, rowY + 6, SOFT, false);
+		g.text(Lang.tr(text), x + 8, rowY + 6, SOFT, false);
 	}
 
 	private void rowBox(Gfx g, int x, int w) {
@@ -569,6 +570,7 @@ final class SettingsPanel {
 	private void cycleRow(Gfx g, String text, String value, int x, int w, int mx, int my, float dt, Runnable action) {
 		rowBox(g, x, w);
 		label(g, text, x);
+		value = Lang.tr(value);
 		int bw = Math.max(70, g.textWidth(value) + 16), bx = x + w - bw - 3;
 		float f = fade("row" + text, hot(mx, my, bx, rowY + 3, bw, 14), dt);
 		Shapes.round(g, bx, rowY + 3, bx + bw, rowY + 17, R_SM, mix(0xFF232D32, 0xFF2C3840, f));
@@ -646,10 +648,10 @@ final class SettingsPanel {
 		});
 		rowBox(g, x, w);
 		label(g, "Menu key", x);
-		String key = "Right Shift (change in Controls)";
+		String key = Lang.tr("Right Shift (change in Controls)");
 		g.text(key, x + w - 8 - g.textWidth(key), rowY + 6, MUTED, false);
 		rowY += 24;
-		g.text("Novex Client shows information only: no reach, hitbox, auto-click or ESP.", x, rowY + 8, MUTED, false);
+		g.text(Lang.tr("Novex Client shows information only: no reach, hitbox, auto-click or ESP."), x, rowY + 8, MUTED, false);
 	}
 
 	// ---- Input --------------------------------------------------------------------------------

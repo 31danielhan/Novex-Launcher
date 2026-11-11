@@ -60,7 +60,7 @@ public final class NovexClient {
 				return;
 			}
 			// A Novex Client button on the title screen, above Singleplayer.
-			if (screen instanceof TitleScreen && NovexCore.config.titleButton) e.addListener(Button.builder(Component.literal("Novex Client"),
+			if (screen instanceof TitleScreen && NovexCore.config.titleButton) e.addListener(Button.builder(Component.literal(dev.novex.client.core.Lang.tr("Novex Client")),
 						b -> mc.setScreen(new NovexScreen(screen, true)))
 						.bounds(width / 2 - 100, height / 4 + 24, 200, 20).build());
 		});

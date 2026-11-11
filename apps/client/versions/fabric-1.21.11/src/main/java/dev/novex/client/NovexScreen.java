@@ -24,7 +24,7 @@ final class NovexScreen extends Screen {
 	}
 
 	private NovexScreen(Screen parent, ClientGui gui) {
-		super(Component.literal("Novex Client"));
+		super(Component.literal(dev.novex.client.core.Lang.tr("Novex Client")));
 		this.parent = parent;
 		this.gui = gui;
 	}

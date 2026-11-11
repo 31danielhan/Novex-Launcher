@@ -3,6 +3,7 @@ import { Copy } from "lucide-react";
 import { useLauncher } from "../launcher";
 import { Dialog } from "./Dialog";
 import { Button } from "./ui";
+import { t } from "../i18n";
 
 export function lineClass(l: string) {
   if (/\/(ERROR|FATAL)\]|Exception|^\s+at /.test(l)) return "text-danger";
@@ -28,13 +29,13 @@ export function LogsDialog() {
       title={`Logs · ${name}`}
       footer={
         <Button icon={Copy} onClick={() => navigator.clipboard.writeText(lines.join("\n")).catch(() => {})}>
-          Copy
+          {t("Copy")}
         </Button>
       }
     >
       <div className="h-[55vh] select-text overflow-auto rounded-lg bg-raised p-3 font-mono text-[11.5px] leading-relaxed">
         {lines.length === 0 ? (
-          <p className="text-muted">No output yet. Logs appear here while the game runs.</p>
+          <p className="text-muted">{t("No output yet. Logs appear here while the game runs.")}</p>
         ) : (
           lines.map((l, i) => (
             <div key={i} className={`whitespace-pre-wrap break-all ${lineClass(l)}`}>

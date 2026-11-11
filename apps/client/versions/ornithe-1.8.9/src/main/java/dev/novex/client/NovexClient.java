@@ -143,7 +143,7 @@ public final class NovexClient {
 			return;
 		}
 		if (NovexCore.config.titleButton)
-			buttons.add(new GuiButton(TITLE_BUTTON, gui.width / 2 - 100, gui.height / 4 + 24, "Novex Client"));
+			buttons.add(new GuiButton(TITLE_BUTTON, gui.width / 2 - 100, gui.height / 4 + 24, dev.novex.client.core.Lang.tr("Novex Client")));
 	}
 
 	/** Whether the title screen button was the Novex one (and it opened the menu). */

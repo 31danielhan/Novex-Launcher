@@ -221,7 +221,7 @@ export interface AppUpdate {
 export const inTauri = isTauri();
 
 function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  if (!inTauri) return Promise.reject(new Error("Available in the desktop app."));
+  if (!inTauri) return Promise.reject(new Error(t("Available in the desktop app.")));
   return invoke<T>(cmd, args);
 }
 

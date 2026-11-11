@@ -119,39 +119,39 @@ export function NewInstanceDialog() {
     <Dialog
       open={newInstanceOpen}
       onClose={() => openNewInstance(false)}
-      title="New instance"
+      title={t("New instance")}
       footer={
         <>
           <Button variant="ghost" onClick={() => openNewInstance(false)}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button
             variant="primary"
             onClick={create}
             disabled={!selected || !!busy || (loader !== "vanilla" && !loaderVersion)}
           >
-            {busy === "client" ? t("Setting up Novex Client…") : busy ? "Creating…" : "Create"}
+            {busy === "client" ? t("Setting up Novex Client…") : busy ? t("Creating…") : t("Create")}
           </Button>
         </>
       }
     >
       <div className="space-y-4">
-        <Field label="Name">
+        <Field label={t("Name")}>
           <input
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={selected ? `Minecraft ${selected}` : "My instance"}
+            placeholder={selected ? `Minecraft ${selected}` : t("My instance")}
             className={inputClass}
           />
         </Field>
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-[12px] font-medium text-muted">Version</span>
+            <span className="text-[12px] font-medium text-muted">{t("Version")}</span>
             <label className="flex items-center gap-2 text-[12px] text-muted">
-              Show snapshots & old versions
-              <Toggle label="Show snapshots" checked={snapshots} onChange={setSnapshots} />
+              {t("Show snapshots & old versions")}
+              <Toggle label={t("Show snapshots")} checked={snapshots} onChange={setSnapshots} />
             </label>
           </div>
           <div className="hairline mb-2 flex h-9 items-center gap-2 rounded-full border bg-raised px-4 focus-within:border-fg/20">
@@ -159,14 +159,14 @@ export function NewInstanceDialog() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Filter versions"
+              placeholder={t("Filter versions")}
               className="h-full flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted"
             />
           </div>
           <div className="hairline h-56 overflow-y-auto rounded-lg border p-1">
             {!versions && !error && (
               <p className="flex h-full items-center justify-center gap-2 text-[13px] text-muted">
-                <Loader2 size={14} className="animate-spin" /> Loading versions…
+                <Loader2 size={14} className="animate-spin" /> {t("Loading versions…")}
               </p>
             )}
             {shown.map((v) => (
@@ -188,8 +188,8 @@ export function NewInstanceDialog() {
         </div>
 
         <div className="space-y-2">
-          <span className="block text-[12px] font-medium text-muted">Mod loader</span>
-          <Segmented value={loader} onChange={setLoader} options={loaderOptions} />
+          <span className="block text-[12px] font-medium text-muted">{t("Mod loader")}</span>
+          <Segmented value={loader} onChange={setLoader} options={loaderOptions.map((o) => ({ ...o, label: t(o.label) }))} />
           {loader === "forge" && selected && isOld(selected) && (
             <button type="button" className="block text-left text-[12px] text-muted hover:text-fg" onClick={() => setLoader("ornithe")}>
               {t("Ornithe runs old versions natively on Java 25, so they're much faster than on Forge, especially on Apple Silicon.")}
