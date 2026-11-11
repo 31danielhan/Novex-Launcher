@@ -5,6 +5,7 @@ import { api, errorText, type Account, type DeviceCode } from "../lib/api";
 import { useLauncher } from "../launcher";
 import { Dialog, inputClass } from "./Dialog";
 import { Badge, Button, cx } from "./ui";
+import { t } from "../i18n";
 
 const faces = new Map<string, Promise<string | null>>();
 
@@ -78,10 +79,10 @@ export function Avatar({ account, size = 32 }: { account: Account; size?: number
 
 /** Same rules as the backend, so the form can say what's wrong before submitting. */
 function offlineNameProblem(name: string, accounts: Account[]): string | null {
-  if (!/^[A-Za-z0-9_]{3,16}$/.test(name)) return "Use 3–16 letters, numbers or underscores.";
+  if (!/^[A-Za-z0-9_]{3,16}$/.test(name)) return t("Use 3–16 letters, numbers or underscores.");
   const taken = accounts.find((a) => a.name.toLowerCase() === name.toLowerCase());
-  if (taken?.kind === "microsoft") return "That name belongs to your Microsoft account.";
-  if (taken) return "You already have an offline account with that name.";
+  if (taken?.kind === "microsoft") return t("That name belongs to your Microsoft account.");
+  if (taken) return t("You already have an offline account with that name.");
   return null;
 }
 
@@ -124,7 +125,7 @@ function SignIn({ onDone, onCancel }: { onDone: () => void; onCancel: () => void
     return (
       <div className="space-y-4">
         <p className="rounded bg-danger/10 px-3 py-2.5 text-[13px] text-danger">{error}</p>
-        <Button onClick={onCancel}>Back</Button>
+        <Button onClick={onCancel}>{t("Back")}</Button>
       </div>
     );
   }
@@ -134,32 +135,32 @@ function SignIn({ onDone, onCancel }: { onDone: () => void; onCancel: () => void
       {code ? (
         <>
           <p className="text-[13px] text-muted">
-            Open the Microsoft sign-in page and enter this code:
+            {t("Open the Microsoft sign-in page and enter this code:")}
           </p>
           <p className="select-text font-mono text-3xl font-semibold tracking-[0.2em]">
             {code.userCode}
           </p>
           <Button variant="primary" icon={copied ? Check : Copy} onClick={copyAndOpen}>
-            {copied ? "Copied — opening browser" : "Copy code & open browser"}
+            {copied ? t("Copied — opening browser") : t("Copy code & open browser")}
           </Button>
           <p className="flex items-center justify-center gap-2 text-[12px] text-muted">
-            <Loader2 size={14} className="animate-spin" /> Waiting for you to finish signing in…
+            <Loader2 size={14} className="animate-spin" /> {t("Waiting for you to finish signing in…")}
           </p>
         </>
       ) : (
         <p className="flex items-center justify-center gap-2 py-6 text-[13px] text-muted">
-          <Loader2 size={16} className="animate-spin" /> Contacting Microsoft…
+          <Loader2 size={16} className="animate-spin" /> {t("Contacting Microsoft…")}
         </p>
       )}
       <Button variant="ghost" onClick={onCancel}>
-        Cancel
+        {t("Cancel")}
       </Button>
     </div>
   );
 }
 
 export function AccountsDialog() {
-  const { accountsOpen, openAccounts, accounts, activeAccount, offlineAllowed, refreshAccounts } =
+  const { accountsOpen, openAccounts, accounts, activeAccount, refreshAccounts } =
     useLauncher();
   const [signingIn, setSigningIn] = useState(false);
   const [offlineName, setOfflineName] = useState("");
@@ -188,7 +189,7 @@ export function AccountsDialog() {
   };
 
   return (
-    <Dialog open={accountsOpen} onClose={close} title="Accounts">
+    <Dialog open={accountsOpen} onClose={close} title={t("Accounts")}>
       {signingIn ? (
         <SignIn
           onDone={() => {
@@ -208,10 +209,10 @@ export function AccountsDialog() {
                     <li key={a.uuid} className="flex items-center gap-3 rounded bg-danger/10 px-2 py-2">
                       <Avatar account={a} />
                       <span className="flex-1 text-[13px]">
-                        Remove {a.name}? You'll have to sign in again.
+                        {t("Remove {name}? You'll have to sign in again.", { name: a.name })}
                       </span>
                       <Button variant="ghost" onClick={() => setConfirmRemove(null)}>
-                        Cancel
+                        {t("Cancel")}
                       </Button>
                       <button
                         onClick={() => {
@@ -220,7 +221,7 @@ export function AccountsDialog() {
                         }}
                         className="h-9 rounded-full bg-danger px-4 text-[13px] font-medium text-white transition hover:opacity-90"
                       >
-                        Remove
+                        {t("Remove")}
                       </button>
                     </li>
                   );
@@ -241,13 +242,13 @@ export function AccountsDialog() {
                       <span className="flex-1">
                         <span className="block font-medium">{a.name}</span>
                         <span className="text-[12px] text-muted">
-                          {a.kind === "microsoft" ? "Microsoft" : "Offline"}
+                          {a.kind === "microsoft" ? "Microsoft" : t("Offline")}
                         </span>
                       </span>
-                      {active && <Badge>Active</Badge>}
+                      {active && <Badge>{t("Active")}</Badge>}
                     </button>
                     <button
-                      aria-label={`Remove ${a.name}`}
+                      aria-label={t("Remove {name}", { name: a.name })}
                       onClick={() =>
                         a.kind === "microsoft"
                           ? setConfirmRemove(a.uuid)
@@ -265,56 +266,50 @@ export function AccountsDialog() {
 
           {accounts.length === 0 && (
             <p className="text-[13px] text-muted">
-              Sign in with the Microsoft account that owns Minecraft: Java Edition.
+              {t("Pick a player name to play offline, or sign in with Microsoft for online servers.")}
             </p>
           )}
 
-          <Button variant="primary" icon={LogIn} className="w-full" onClick={() => setSigningIn(true)}>
-            Sign in with Microsoft
-          </Button>
-
-          <div className="hairline space-y-2 border-t pt-4">
-            <p className="text-[12px] font-medium text-muted">Offline account</p>
-            {offlineAllowed ? (
-              <>
-                <form
-                  className="flex gap-2"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (nameProblem) return;
-                    run(async () => {
-                      await api.addOffline(offlineName.trim());
-                      setOfflineName("");
-                    });
-                  }}
-                >
-                  <input
-                    value={offlineName}
-                    onChange={(e) => setOfflineName(e.target.value)}
-                    placeholder="Player name"
-                    maxLength={16}
-                    spellCheck={false}
-                    className={inputClass}
-                  />
-                  <Button icon={UserPlus} type="submit" disabled={!!nameProblem}>
-                    Add
-                  </Button>
-                </form>
-                {showNameProblem ? (
-                  <p className="text-[12px] text-danger">{nameProblem}</p>
-                ) : (
-                  <p className="text-[12px] text-muted">
-                    Offline accounts can play singleplayer, LAN and servers in offline mode. Online
-                    servers need your Microsoft account.
-                  </p>
-                )}
-              </>
+          <div className="space-y-2">
+            <p className="text-[12px] font-medium text-muted">{t("Offline account")}</p>
+            <form
+              className="flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (nameProblem) return;
+                run(async () => {
+                  await api.addOffline(offlineName.trim());
+                  setOfflineName("");
+                });
+              }}
+            >
+              <input
+                autoFocus={accounts.length === 0}
+                value={offlineName}
+                onChange={(e) => setOfflineName(e.target.value)}
+                placeholder={t("Player name")}
+                maxLength={16}
+                spellCheck={false}
+                className={inputClass}
+              />
+              <Button variant="primary" icon={UserPlus} type="submit" disabled={!!nameProblem}>
+                {t("Add")}
+              </Button>
+            </form>
+            {showNameProblem ? (
+              <p className="text-[12px] text-danger">{nameProblem}</p>
             ) : (
               <p className="text-[12px] text-muted">
-                Sign in with a Microsoft account that owns Minecraft first, then you can add offline
-                accounts for singleplayer and LAN.
+                {t("Offline accounts can play singleplayer, LAN and servers in offline mode. Online servers need your Microsoft account.")}
               </p>
             )}
+          </div>
+
+          <div className="hairline space-y-2 border-t pt-4">
+            <p className="text-[12px] font-medium text-muted">{t("Microsoft account")}</p>
+            <Button icon={LogIn} className="w-full" onClick={() => setSigningIn(true)}>
+              {t("Sign in with Microsoft")}
+            </Button>
           </div>
 
           {error && <p className="text-[13px] text-danger">{error}</p>}

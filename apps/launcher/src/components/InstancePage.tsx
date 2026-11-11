@@ -261,7 +261,7 @@ function Worlds({ inst }: { inst: Instance }) {
       </div>
       {worlds === null ? (
         <p className="flex items-center gap-2 py-10 text-[13px] text-muted">
-          <Loader2 size={15} className="animate-spin" /> Loading…
+          <Loader2 size={15} className="animate-spin" /> {t("Loading…")}
         </p>
       ) : worlds.length === 0 ? (
         <EmptyState
@@ -458,7 +458,7 @@ export function InstancePage({ inst }: { inst: Instance }) {
         className="flex w-fit items-center gap-1.5 rounded-md px-2 py-1 -ml-2 text-[13px] text-muted transition hover:bg-fg/5 hover:text-fg"
       >
         <ArrowLeft size={15} />
-        All instances
+        {t("All instances")}
       </button>
 
       <Card className="p-5">
@@ -564,33 +564,32 @@ export function InstancePage({ inst }: { inst: Instance }) {
               variant="ghost"
               icon={FolderOpen}
               onClick={openFolder}
-              title="Open this folder"
+              title={t("Open this folder")}
             >
-              Folder
+              {t("Folder")}
             </Button>
             <Button icon={Plus} onClick={browse}>
-              Add
+              {t("Add")}
             </Button>
           </div>
 
           <div className="mb-3 flex items-center gap-3 rounded-lg bg-raised px-3 py-2.5 text-[12px]">
             {checking ? (
               <span className="flex items-center gap-2 text-muted">
-                <Loader2 size={14} className="animate-spin" /> Checking for
-                updates…
+                <Loader2 size={14} className="animate-spin" /> {t("Checking for updates…")}
               </span>
             ) : pending.length ? (
               <span className="flex items-center gap-2">
                 <ArrowUpCircle size={14} className="text-success" />
                 {pending.length === 1
-                  ? "1 update available"
-                  : `${pending.length} updates available`}
+                  ? t("1 update available")
+                  : t("{count} updates available", { count: pending.length })}
               </span>
             ) : (
               <span className="text-muted">
                 {updates
-                  ? "Everything from Modrinth and CurseForge is up to date."
-                  : "Updates weren't checked."}
+                  ? t("Everything from Modrinth and CurseForge is up to date.")
+                  : t("Updates weren't checked.")}
               </span>
             )}
             <div className="flex-1" />
@@ -601,7 +600,7 @@ export function InstancePage({ inst }: { inst: Instance }) {
               onClick={check}
               disabled={checking}
             >
-              Check
+              {t("Check")}
             </Button>
             {pendingHere.length > 0 && (
               <Button
@@ -610,28 +609,28 @@ export function InstancePage({ inst }: { inst: Instance }) {
                 disabled={updating.size > 0}
                 onClick={() => update(pendingHere)}
               >
-                Update all {label.toLowerCase()}
+                {t(`Update all ${label.toLowerCase()}`)}
               </Button>
             )}
           </div>
 
           {items === null ? (
             <p className="flex items-center gap-2 py-10 text-[13px] text-muted">
-              <Loader2 size={15} className="animate-spin" /> Loading…
+              <Loader2 size={15} className="animate-spin" /> {t("Loading…")}
             </p>
           ) : shown.length === 0 ? (
             query ? (
               <p className="py-10 text-center text-[13px] text-muted">
-                Nothing matches “{query}”.
+                {t("Nothing matches “{query}”.", { query })}
               </p>
             ) : (
               <EmptyState
                 icon={Package}
-                title={`No ${label.toLowerCase()} yet`}
+                title={t(`No ${label.toLowerCase()} yet`)}
                 body={
                   tab === "mod" && inst.loader === "vanilla"
-                    ? "This is a vanilla instance. Mods need Fabric, Quilt, Ornithe, Forge or NeoForge."
-                    : "Find something in Browse, or drop files into the folder."
+                    ? t("This is a vanilla instance. Mods need Fabric, Quilt, Ornithe, Forge or NeoForge.")
+                    : t("Find something in Browse, or drop files into the folder.")
                 }
                 action={
                   <Button icon={Plus} onClick={browse}>
@@ -666,7 +665,7 @@ export function InstancePage({ inst }: { inst: Instance }) {
                         {up && (
                           <span className="text-success"> → {up.version}</span>
                         )}
-                        {!i.source && " · added by hand"}
+                        {!i.source && ` · ${t("added by hand")}`}
                       </p>
                     </div>
                     {up &&
@@ -674,7 +673,7 @@ export function InstancePage({ inst }: { inst: Instance }) {
                         <Badge>
                           <span className="flex items-center gap-1">
                             <Loader2 size={11} className="animate-spin" />{" "}
-                            Updating
+                            {t("Updating")}
                           </span>
                         </Badge>
                       ) : (
@@ -684,17 +683,17 @@ export function InstancePage({ inst }: { inst: Instance }) {
                           disabled={updating.size > 0}
                           onClick={() => update([up])}
                         >
-                          Update
+                          {t("Update")}
                         </Button>
                       ))}
                     <button
                       aria-label={
                         confirm === key
-                          ? "Click again to remove"
-                          : `Remove ${i.title}`
+                          ? t("Click again to remove")
+                          : t("Remove {name}", { name: i.title })
                       }
                       title={
-                        confirm === key ? "Click again to remove" : "Remove"
+                        confirm === key ? t("Click again to remove") : t("Remove")
                       }
                       onClick={() =>
                         confirm === key
@@ -714,7 +713,7 @@ export function InstancePage({ inst }: { inst: Instance }) {
                       )}
                     </button>
                     <Toggle
-                      label={`${i.enabled ? "Disable" : "Enable"} ${i.title}`}
+                      label={t(i.enabled ? "Disable {name}" : "Enable {name}", { name: i.title })}
                       checked={i.enabled}
                       onChange={(on) =>
                         act(() =>

@@ -162,7 +162,7 @@ function ModpackVersions({ hit, install, onClose }: { hit: SearchHit; install: I
 
   return (
     <>
-      <h3 className="mb-2 text-[13px] font-semibold">Versions</h3>
+      <h3 className="mb-2 text-[13px] font-semibold">{t("Versions")}</h3>
       {error && <p className="rounded-lg bg-danger/10 px-3 py-2.5 text-[13px] text-danger">{error}</p>}
       {!versions && !error && (
         <div className="grid h-32 place-items-center text-muted">
@@ -183,7 +183,7 @@ function ModpackVersions({ hit, install, onClose }: { hit: SearchHit; install: I
             <Button
               className="h-8"
               disabled={busy !== null || !v.file.url}
-              title={v.file.url ? undefined : "The author only allows downloads from CurseForge's website"}
+              title={v.file.url ? undefined : t("The author only allows downloads from CurseForge's website")}
               onClick={() => pick(v)}
             >
               {busy === v.id ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
@@ -217,14 +217,15 @@ function ProjectDialog({
         <ProjectIcon url={hit.iconUrl} title={hit.title} size={64} />
         <div className="min-w-0 flex-1">
           <p className="text-[13px] text-muted">
-            by {hit.author} · {compactNumber(hit.downloads)} downloads · {sourceLabel[hit.source]}
+            {t("by {author} · {count} downloads", { author: hit.author, count: compactNumber(hit.downloads) })} ·{" "}
+            {sourceLabel[hit.source]}
           </p>
           <p className="mt-1 text-[13px]">{hit.description}</p>
           <button
             onClick={() => openUrl(hit.url)}
             className="mt-2 inline-flex items-center gap-1 text-[12px] font-medium text-muted hover:text-fg"
           >
-            Open on {sourceLabel[hit.source]} <ExternalLink size={12} />
+            {t("Open on {site}", { site: sourceLabel[hit.source] })} <ExternalLink size={12} />
           </button>
         </div>
       </div>
@@ -400,7 +401,7 @@ export function BrowseScreen() {
             onChange={setSource}
             options={[
               { value: "modrinth", label: "Modrinth" },
-              { value: "curseforge", label: curseforge ? "CurseForge" : "CurseForge (no key)" },
+              { value: "curseforge", label: curseforge ? "CurseForge" : t("CurseForge (no key)") },
             ]}
           />
         }
@@ -412,7 +413,10 @@ export function BrowseScreen() {
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={`Search ${kinds.find((k) => k.value === kind)?.label.toLowerCase()} on ${sourceLabel[source]}…`}
+          placeholder={t("Search {kind} on {site}…", {
+            kind: t(kinds.find((k) => k.value === kind)?.label ?? "").toLowerCase(),
+            site: sourceLabel[source],
+          })}
           className="h-full flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted"
         />
         {loading && <Loader2 size={15} className="animate-spin text-muted" />}
@@ -471,7 +475,7 @@ export function BrowseScreen() {
         <div className="mt-5 flex justify-center">
           <Button onClick={() => run(hits.length)} disabled={loading}>
             {loading && <Loader2 size={14} className="animate-spin" />}
-            Load more
+            {t("Load more")}
           </Button>
         </div>
       )}

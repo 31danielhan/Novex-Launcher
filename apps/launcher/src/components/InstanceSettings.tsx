@@ -62,12 +62,12 @@ export function InstanceSettings({ inst }: { inst: Instance }) {
   return (
     <Card className="p-5">
       <div className="space-y-4">
-        <Field label="Name">
+        <Field label={t("Name")}>
           <input value={patch.name} onChange={(e) => set({ name: e.target.value })} className={inputClass} />
         </Field>
 
         {inst.loader !== "vanilla" && (
-          <Field label={`${loaderLabels[inst.loader]} version (Minecraft ${inst.version})`}>
+          <Field label={t("{loader} version (Minecraft {version})", { loader: loaderLabels[inst.loader], version: inst.version })}>
             <LoaderVersionSelect
               kind={inst.loader}
               game={inst.version}
@@ -79,9 +79,9 @@ export function InstanceSettings({ inst }: { inst: Instance }) {
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-[12px] font-medium text-muted">Custom memory</span>
+            <span className="text-[12px] font-medium text-muted">{t("Custom memory")}</span>
             <Toggle
-              label="Custom memory"
+              label={t("Custom memory")}
               checked={patch.memoryMb !== null}
               onChange={(on) => set({ memoryMb: on ? memory : null })}
             />
@@ -96,14 +96,14 @@ export function InstanceSettings({ inst }: { inst: Instance }) {
                 value={memory}
                 onChange={(e) => set({ memoryMb: Number(e.target.value) })}
                 className="flex-1 accent-[rgb(var(--accent))]"
-                aria-label="Memory"
+                aria-label={t("Memory")}
               />
               <span className="w-14 text-right text-[13px] font-medium">
                 {(memory / 1024).toFixed(1).replace(/\.0$/, "")} GB
               </span>
             </div>
           ) : (
-            <p className="text-[12px] text-muted">Uses the global setting.</p>
+            <p className="text-[12px] text-muted">{t("Uses the global setting.")}</p>
           )}
         </div>
 
@@ -135,20 +135,20 @@ export function InstanceSettings({ inst }: { inst: Instance }) {
           </div>
         )}
 
-        <Field label="Java executable">
+        <Field label={t("Java executable")}>
           <input
             value={patch.javaPath ?? ""}
             onChange={(e) => set({ javaPath: e.target.value || null })}
-            placeholder="Global setting"
+            placeholder={t("Global setting")}
             className={inputClass}
             spellCheck={false}
           />
         </Field>
-        <Field label="JVM arguments">
+        <Field label={t("JVM arguments")}>
           <input
             value={patch.jvmArgs ?? ""}
             onChange={(e) => set({ jvmArgs: e.target.value || null })}
-            placeholder="Global setting"
+            placeholder={t("Global setting")}
             className={`${inputClass} font-mono`}
             spellCheck={false}
           />
@@ -158,7 +158,7 @@ export function InstanceSettings({ inst }: { inst: Instance }) {
 
         <div className="flex items-center gap-2 pt-2">
           <Button variant="ghost" icon={Copy} disabled={busy} onClick={() => run(() => api.cloneInstance(inst.id))}>
-            Duplicate
+            {t("Duplicate")}
           </Button>
           <Button
             variant="ghost"
@@ -176,7 +176,7 @@ export function InstanceSettings({ inst }: { inst: Instance }) {
             disabled={busy}
             onClick={() => run(() => api.updateInstance(inst.id, patch)).then(() => setNotice("Saved."))}
           >
-            Save
+            {t("Save")}
           </Button>
         </div>
       </div>

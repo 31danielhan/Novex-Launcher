@@ -63,7 +63,7 @@ public final class NovexClient implements ClientModInitializer {
 			}
 			// A Novex Client button on the title screen, above Singleplayer.
 			if (screen instanceof TitleScreen && NovexCore.config.titleButton)
-				Screens.getWidgets(screen).add(Button.builder(Component.literal("Novex Client"),
+				Screens.getWidgets(screen).add(Button.builder(Component.literal(dev.novex.client.core.Lang.tr("Novex Client")),
 						b -> mc.setScreen(new NovexScreen(screen, true)))
 						.bounds(width / 2 - 100, height / 4 + 24, 200, 20).build());
 			// The menu key opens the menu from any other screen too (menus, inventories, pause).

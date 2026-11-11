@@ -83,8 +83,8 @@ function UpdateButton() {
       disabled={!!updating}
       title={
         available.kind === "app"
-          ? "Downloads the update, then restarts Novex"
-          : "Downloads the new interface and reloads it"
+          ? t("Downloads the update, then restarts Novex")
+          : t("Downloads the new interface and reloads it")
       }
       className="flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-success/30 bg-success/10 px-4 text-[13px] font-medium text-success transition hover:bg-success/15 disabled:cursor-wait"
     >
@@ -160,7 +160,7 @@ function StatusBar() {
             />
           </div>
           <p className="mt-1.5 truncate text-[11px] text-muted">
-            {pack.stage}
+            {t(pack.stage)}
             {pack.total > 0 && ` · ${pack.done}/${pack.total}`}
           </p>
         </div>

@@ -197,9 +197,9 @@ public final class ClientGui {
 		g.push(c[0] + c[2] / 2f, c[1] + 7, 1.5f);
 		centered(g, "Novex", 0, 0, TEXT, true);
 		g.pop();
-		centered(g, "Settings", c[0] + c[2] / 2, c[1] + 25, overButton ? ACCENT : MUTED, false);
+		centered(g, Lang.tr("Settings"), c[0] + c[2] / 2, c[1] + 25, overButton ? ACCENT : MUTED, false);
 
-		String hint = "Drag to move. Drag a corner or scroll to resize. Esc to go back.";
+		String hint = Lang.tr("Drag to move. Drag a corner or scroll to resize. Esc to go back.");
 		centered(g, hint, g.width() / 2, g.height() - 14, 0xAAFFFFFF, true);
 	}
 

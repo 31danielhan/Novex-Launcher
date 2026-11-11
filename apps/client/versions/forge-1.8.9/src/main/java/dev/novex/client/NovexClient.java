@@ -145,7 +145,7 @@ public final class NovexClient {
 			return;
 		}
 		if (e.gui instanceof GuiMainMenu && NovexCore.config.titleButton)
-			e.buttonList.add(new GuiButton(TITLE_BUTTON, e.gui.width / 2 - 100, e.gui.height / 4 + 24, "Novex Client"));
+			e.buttonList.add(new GuiButton(TITLE_BUTTON, e.gui.width / 2 - 100, e.gui.height / 4 + 24, dev.novex.client.core.Lang.tr("Novex Client")));
 	}
 
 	@SubscribeEvent

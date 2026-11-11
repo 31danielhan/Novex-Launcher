@@ -238,7 +238,7 @@ function Card({
       <div className="nvx-card" onContextMenu={reset}>
         {head}
         <button className={on ? "nvx-state nvx-enabled" : "nvx-state nvx-disabled"} onClick={() => set(o.id, !on)}>
-          {on ? "ENABLED" : "DISABLED"}
+          {on ? t("ENABLED") : t("DISABLED")}
         </button>
       </div>
     );
@@ -249,14 +249,14 @@ function Card({
       <div className="nvx-card" onContextMenu={reset}>
         {head}
         <div className="nvx-range">
-          <span>{o.show(v)}</span>
+          <span>{t(o.show(v))}</span>
           <input
             type="range"
             min={o.min}
             max={o.max}
             step={o.step}
             value={v}
-            aria-label={o.label}
+            aria-label={t(o.label)}
             style={{ "--at": `${((v - o.min) / (o.max - o.min)) * 100}%` } as React.CSSProperties}
             onChange={(e) => preview(o.id, Number(e.target.value))}
             onPointerUp={(e) => set(o.id, Number((e.target as HTMLInputElement).value))}
@@ -274,7 +274,7 @@ function Card({
         <div className="grid grid-cols-1 gap-1.5 p-2 sm:grid-cols-2 lg:grid-cols-3">
           {o.values.map(([code, name]) => (
             <button key={String(code)} className={cx("nvx-key", current === code && "nvx-on")} onClick={() => set(o.id, code)}>
-              {name}
+              {t(String(name))}
             </button>
           ))}
         </div>
@@ -289,7 +289,7 @@ function Card({
         className="nvx-state nvx-cycle"
         onClick={(e) => set(o.id, o.values[(i + (e.shiftKey ? o.values.length - 1 : 1)) % o.values.length][0])}
       >
-        {o.values[i][1]}
+        {t(String(o.values[i][1]))}
       </button>
     </div>
   );
@@ -329,14 +329,14 @@ function Keys({
             return (
               <div key={b.id} className="nvx-row" onContextMenu={(e) => (e.preventDefault(), set(b.id, null))}>
                 <span className={cx("nvx-bind", own[b.id] !== undefined && "nvx-set")}>
-                  {b.label}
+                  {t(b.label)}
                   {b.since && <span className="nvx-since">{b.since}+</span>}
                 </span>
                 <button
                   className={cx("nvx-key", waiting === b.id && "nvx-on", (used.get(k) ?? 0) > 1 && waiting !== b.id && "nvx-clash")}
                   onClick={() => setWaiting(b.id)}
                 >
-                  {waiting === b.id ? `> ${keyLabel(k)} <` : keyLabel(k)}
+                  {waiting === b.id ? `> ${t(keyLabel(k))} <` : t(keyLabel(k))}
                 </button>
               </div>
             );
@@ -386,7 +386,7 @@ function Template({ s, setS }: { s: Settings; setS: (s: Settings) => void }) {
             {t("Instance")}: {inst?.name ?? "—"} ({inst?.version})
           </button>
           <button className="nvx-key" onClick={() => setConfig(!config)}>
-            {t("Include mod settings")}: {onOff(config)}
+            {t("Include mod settings")}: {t(onOff(config))}
           </button>
           <button className="nvx-key nvx-on" onClick={use}>
             {tpl ? t("Replace template") : t("Use as template")}

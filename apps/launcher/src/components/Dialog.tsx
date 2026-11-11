@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { cx } from "./ui";
+import { t } from "../i18n";
 
 export function Dialog({
   open,
@@ -43,7 +44,7 @@ export function Dialog({
           <h2 className="display text-[18px] font-semibold">{title}</h2>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("Close")}
             className="grid h-8 w-8 place-items-center rounded-md text-muted hover:bg-fg/5 hover:text-fg"
           >
             <X size={16} />

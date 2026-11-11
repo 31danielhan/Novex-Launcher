@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { t } from "../i18n";
 import { api, errorText, loaderLabels, type LoaderKind, type LoaderVersion } from "../lib/api";
 import { inputClass } from "./Dialog";
 
@@ -38,11 +39,11 @@ export function LoaderVersionSelect({
 
   if (kind === "vanilla") return null;
   if (error) return <p className="text-[13px] text-danger">{error}</p>;
-  if (!list) return <p className="text-[13px] text-muted">Loading {loaderLabels[kind]} versions…</p>;
+  if (!list) return <p className="text-[13px] text-muted">{t("Loading {loader} versions…", { loader: loaderLabels[kind] })}</p>;
   if (list.length === 0) {
     return (
       <p className="text-[13px] text-muted">
-        {loaderLabels[kind]} isn't available for Minecraft {game}.
+        {t("{loader} isn't available for Minecraft {version}.", { loader: loaderLabels[kind], version: game })}
       </p>
     );
   }
@@ -51,7 +52,7 @@ export function LoaderVersionSelect({
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
       className={`${inputClass} appearance-auto`}
-      aria-label={`${loaderLabels[kind]} version`}
+      aria-label={t("{loader} version", { loader: loaderLabels[kind] })}
     >
       {list.map((v) => (
         <option key={v.id} value={v.id}>

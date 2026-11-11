@@ -35,6 +35,11 @@ public enum Module {
 		Category(String label) {
 			this.label = label;
 		}
+
+		/** The label in the game's language. */
+		public String title() {
+			return Lang.tr(label);
+		}
 	}
 
 	/** Modules every version supports. Adapters that do more add to this in NovexCore.modules. */
@@ -58,6 +63,16 @@ public enum Module {
 		this.description = description;
 		this.icon = icon;
 		this.glyph = glyph;
+	}
+
+	/** The label in the game's language. */
+	public String title() {
+		return Lang.tr(label);
+	}
+
+	/** The description in the game's language. */
+	public String about() {
+		return Lang.tr(description);
 	}
 
 	public boolean get(Config c) {
