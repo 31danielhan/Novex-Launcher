@@ -2,6 +2,7 @@ use std::{env, fs, path::Path};
 
 fn main() {
     embed_client_jars();
+    embed_curseforge_key();
     tauri_build::build()
 }
 
@@ -32,6 +33,37 @@ fn embed_client_jars() {
     fs::write(
         Path::new(&env::var("OUT_DIR").unwrap()).join("client_jars.rs"),
         code,
+    )
+    .unwrap();
+}
+
+/// Generates `curseforge_key.rs`: the CurseForge API key from NOVEX_CURSEFORGE_API_KEY, scrambled
+/// with a pad made fresh for each build, so the key never sits in the app as readable text.
+fn embed_curseforge_key() {
+    println!("cargo:rerun-if-env-changed=NOVEX_CURSEFORGE_API_KEY");
+    let key = env::var("NOVEX_CURSEFORGE_API_KEY").unwrap_or_default();
+    let key = key.trim().as_bytes();
+
+    // A pad from the build's time and process, spread with xorshift.
+    let mut state = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0x9E37_79B9_7F4A_7C15)
+        ^ ((std::process::id() as u64) << 32)
+        | 1;
+    let pad: Vec<u8> = (0..key.len())
+        .map(|_| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            (state >> 24) as u8
+        })
+        .collect();
+    let scrambled: Vec<u8> = key.iter().zip(&pad).map(|(k, p)| k ^ p).collect();
+
+    fs::write(
+        Path::new(&env::var("OUT_DIR").unwrap()).join("curseforge_key.rs"),
+        format!("const SCRAMBLED: &[u8] = &{scrambled:?};\nconst PAD: &[u8] = &{pad:?};\n"),
     )
     .unwrap();
 }
