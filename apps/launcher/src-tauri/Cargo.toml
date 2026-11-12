@@ -1,6 +1,6 @@
 [package]
 name = "novex-launcher"
-version = "0.6.0"
+version = "1.0.0"
 description = "A clean, minimal Minecraft launcher"
 license = "GPL-3.0-only"
 edition = "2021"
@@ -25,6 +25,9 @@ tokio = { version = "1", features = ["fs", "io-util", "process", "sync", "time",
 futures-util = "0.3"
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "gzip"] }
 sha1 = "0.10"
+sha2 = "0.10"
+flate2 = "1"
+tar = "0.4"
 md-5 = "0.10"
 hex = "0.4"
 base64 = "0.22"
@@ -49,3 +52,14 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_System_Diagnostics_Debug",
+  "Win32_System_Diagnostics_ToolHelp",
+  "Win32_System_LibraryLoader",
+  "Win32_System_Memory",
+  "Win32_System_Threading",
+] }

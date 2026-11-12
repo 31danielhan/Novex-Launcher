@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { languages, resolveLanguage, setLanguage as applyLanguage, type LanguagePref } from "./i18n";
 
-export type Screen = "home" | "instances" | "browse" | "client" | "game" | "settings";
+export type Screen = "home" | "instances" | "browse" | "client" | "bedrock" | "game" | "settings";
 export type ThemePref = "dark" | "light" | "system";
 /** Color theme. Most use liquid-glass surfaces over a colored backdrop (Classic only lightly);
     PCL and Prism are flat. */
@@ -42,21 +42,19 @@ export const palettes: { value: Palette; label: string; swatch: string }[] = [
 const THEME_KEY = "novex.theme";
 const PALETTE_KEY = "novex.palette";
 const LANGUAGE_KEY = "novex.language";
-const OPACITY_KEY = "novex.windowOpacity";
+const BLUR_KEY = "novex.windowBlur";
 
-/** How solid a glass theme's window background is, 50–100 percent. */
-function readOpacity(): number {
+/** How much glass themes blur the desktop behind them, 0–100 percent. The tint over it stays at
+    80% (--window-alpha in styles.css). */
+function readBlur(): number {
   try {
-    const v = Number(localStorage.getItem(OPACITY_KEY));
-    if (v >= 50 && v <= 100) return v;
+    const raw = localStorage.getItem(BLUR_KEY);
+    const v = Number(raw);
+    if (raw !== null && v >= 0 && v <= 100) return v;
   } catch {
     // Storage can be unavailable; fall back to the default.
   }
-  return 82;
-}
-
-function applyOpacity(percent: number) {
-  document.documentElement.style.setProperty("--window-alpha", String(percent / 100));
+  return 50;
 }
 
 function read<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
@@ -85,6 +83,9 @@ function applyTheme(pref: ThemePref) {
         : "dark"
       : pref;
   document.documentElement.dataset.theme = resolved;
+  // The desktop blur behind glass themes goes dark or light with the mode.
+  const palette = document.documentElement.dataset.palette as Palette | undefined;
+  if (palette && !flat.includes(palette)) windowGlass(true, readBlur());
 }
 
 function applyPalette(p: Palette) {
@@ -93,15 +94,21 @@ function applyPalette(p: Palette) {
   const glass = !flat.includes(p);
   if (glass) root.dataset.glass = "";
   else delete root.dataset.glass;
-  windowGlass(glass);
+  windowGlass(glass, readBlur());
 }
 
 /** Glass themes get a light blur of the desktop behind their see-through tint (see glass.rs). Flat
     themes stay solid. Only in the desktop app. */
-function windowGlass(on: boolean) {
+function windowGlass(on: boolean, blur: number) {
   if (!("__TAURI_INTERNALS__" in window)) return;
   import("@tauri-apps/api/core")
-    .then(({ invoke }) => invoke("window_glass", { on }))
+    .then(({ invoke }) =>
+      invoke("window_glass", {
+        on,
+        strength: blur / 100,
+        dark: document.documentElement.dataset.theme === "dark",
+      }),
+    )
     .catch(() => {
       // Older systems without window effects keep a clear tint.
     });
@@ -119,9 +126,9 @@ interface AppState {
   setLanguage: (l: LanguagePref) => void;
   setTheme: (t: ThemePref) => void;
   setPalette: (p: Palette) => void;
-  /** Glass themes' window opacity, in percent. */
-  windowOpacity: number;
-  setWindowOpacity: (percent: number) => void;
+  /** How much glass themes blur the desktop, in percent. */
+  windowBlur: number;
+  setWindowBlur: (percent: number) => void;
 }
 
 export const useApp = create<AppState>((set) => ({
@@ -133,11 +140,11 @@ export const useApp = create<AppState>((set) => ({
     "poly",
   ),
   language: read<LanguagePref>(LANGUAGE_KEY, ["system", ...languages.map((l) => l.value)], "system"),
-  windowOpacity: readOpacity(),
-  setWindowOpacity: (windowOpacity) => {
-    write(OPACITY_KEY, String(windowOpacity));
-    applyOpacity(windowOpacity);
-    set({ windowOpacity });
+  windowBlur: readBlur(),
+  setWindowBlur: (windowBlur) => {
+    write(BLUR_KEY, String(windowBlur));
+    set({ windowBlur });
+    if (!flat.includes(useApp.getState().palette)) windowGlass(true, windowBlur);
   },
   pendingSearch: null,
   setPendingSearch: (pendingSearch) => set({ pendingSearch }),
@@ -162,7 +169,6 @@ export const useApp = create<AppState>((set) => ({
 applyTheme(useApp.getState().theme);
 applyLanguage(resolveLanguage(useApp.getState().language));
 applyPalette(useApp.getState().palette);
-applyOpacity(useApp.getState().windowOpacity);
 window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
   if (useApp.getState().theme === "system") applyTheme("system");
 });

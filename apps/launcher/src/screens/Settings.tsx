@@ -286,8 +286,8 @@ export function SettingsScreen() {
     setPalette,
     language,
     setLanguage,
-    windowOpacity,
-    setWindowOpacity,
+    windowBlur,
+    setWindowBlur,
   } = useApp();
   const glass = !["poly", "pcl", "prism", "minecraft"].includes(palette);
   const settings = useSettings();
@@ -359,21 +359,21 @@ export function SettingsScreen() {
             </Row>
             {glass && (
               <Row
-                label={t("Window opacity")}
-                hint={t("How much of the desktop shows through glass themes.")}
+                label={t("Background blur")}
+                hint={t("How much glass themes blur the desktop behind the window.")}
               >
                 <div className="flex items-center gap-3">
                   <input
                     type="range"
-                    min={50}
+                    min={0}
                     max={100}
                     step={1}
-                    value={windowOpacity}
-                    onChange={(e) => setWindowOpacity(Number(e.target.value))}
+                    value={windowBlur}
+                    onChange={(e) => setWindowBlur(Number(e.target.value))}
                     className="w-40 accent-[rgb(var(--accent))]"
-                    aria-label={t("Window opacity")}
+                    aria-label={t("Background blur")}
                   />
-                  <span className="w-12 text-right font-medium text-fg">{windowOpacity}%</span>
+                  <span className="w-12 text-right font-medium text-fg">{windowBlur}%</span>
                 </div>
               </Row>
             )}

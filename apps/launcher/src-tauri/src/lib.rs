@@ -1,5 +1,6 @@
 pub mod auth;
 mod backgrounds;
+mod bedrock;
 pub mod client;
 pub mod content;
 pub mod downloads;
@@ -110,6 +111,9 @@ pub fn run() {
             settings::settings_set,
             backgrounds::background_get,
             backgrounds::backgrounds_folder,
+            bedrock::bedrock_status,
+            bedrock::bedrock_set_config,
+            bedrock::bedrock_launch,
             client::client_status,
             client::client_set_enabled,
             client::instance_switch_to_ornithe,

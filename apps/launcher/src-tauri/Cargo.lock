@@ -2453,10 +2453,11 @@ dependencies = [
 
 [[package]]
 name = "novex-launcher"
-version = "0.6.0"
+version = "1.0.0"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",
+ "flate2",
  "futures-util",
  "hex",
  "keyring",
@@ -2468,7 +2469,9 @@ dependencies = [
  "serde",
  "serde_json",
  "sha1",
+ "sha2",
  "sysinfo",
+ "tar",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
@@ -2477,6 +2480,7 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "uuid",
+ "windows-sys 0.59.0",
  "zip 2.6.1",
 ]
 

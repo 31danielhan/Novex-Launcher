@@ -1,5 +1,6 @@
 import { t } from "../i18n";
 import {
+  Blocks,
   Boxes,
   Compass,
   Gamepad2,
@@ -14,16 +15,17 @@ import { statusOf, useLauncher } from "../launcher";
 import { gamePhase, type Phase } from "../lib/phase";
 import { cx } from "./ui";
 
-const items: { id: Screen; label: string; icon: LucideIcon }[] = [
+const items: { id: Screen; label: string; icon: LucideIcon; beta?: boolean }[] = [
   { id: "home", label: "Home", icon: LayoutGrid },
   { id: "instances", label: "Instances", icon: Boxes },
   { id: "browse", label: "Browse", icon: Compass },
   { id: "client", label: "Novex Client", icon: Swords },
+  { id: "bedrock", label: "Bedrock", icon: Blocks, beta: true },
   { id: "game", label: "Game settings", icon: Gamepad2 },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
-function NavButton({ id, label, icon: Icon }: { id: Screen; label: string; icon: LucideIcon }) {
+function NavButton({ id, label, icon: Icon, beta }: { id: Screen; label: string; icon: LucideIcon; beta?: boolean }) {
   const { screen, setScreen } = useApp();
   const openContent = useLauncher((s) => s.openContent);
   const active = screen === id;
@@ -44,6 +46,11 @@ function NavButton({ id, label, icon: Icon }: { id: Screen; label: string; icon:
     >
       <Icon size={16} strokeWidth={active ? 2.2 : 1.8} className={active ? "text-accent" : undefined} />
       {t(label)}
+      {beta && (
+        <span className="ml-auto rounded-full bg-accent/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-accent">
+          {t("Beta")}
+        </span>
+      )}
     </button>
   );
 }
