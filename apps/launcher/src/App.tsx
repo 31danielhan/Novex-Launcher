@@ -16,6 +16,7 @@ import { HomeScreen } from "./screens/Home";
 import { InstancesScreen } from "./screens/Instances";
 import { BrowseScreen } from "./screens/Browse";
 import { ClientScreen } from "./screens/Client";
+import { BedrockScreen } from "./screens/Bedrock";
 import { SettingsScreen } from "./screens/Settings";
 import { GameSettingsScreen } from "./screens/GameSettings";
 
@@ -24,6 +25,7 @@ const titles: Record<Screen, string> = {
   instances: "Instances",
   browse: "Browse",
   client: "Novex Client",
+  bedrock: "Bedrock",
   game: "Game settings",
   settings: "Settings",
 };
@@ -33,6 +35,7 @@ const screens: Record<Screen, () => JSX.Element> = {
   instances: InstancesScreen,
   browse: BrowseScreen,
   client: ClientScreen,
+  bedrock: BedrockScreen,
   game: GameSettingsScreen,
   settings: SettingsScreen,
 };

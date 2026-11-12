@@ -298,7 +298,7 @@
   display: none;
 }
 :root[data-glass] body {
-  background-color: rgb(var(--bg) / var(--window-alpha, 0.82));
+  background-color: rgb(var(--bg) / var(--window-alpha, 0.8));
 }
 :root[data-glass] .backdrop {
   display: block;

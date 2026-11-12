@@ -218,6 +218,23 @@ export interface AppUpdate {
   notes: string | null;
 }
 
+export type BedrockClient = "latite" | "custom";
+
+export interface BedrockConfig {
+  clientEnabled: boolean;
+  client: BedrockClient;
+  customDll: string | null;
+}
+
+export interface BedrockStatus {
+  supported: boolean;
+  installed: boolean;
+  version: string | null;
+  running: boolean;
+  config: BedrockConfig;
+  latiteVersion: string | null;
+}
+
 export const inTauri = isTauri();
 
 function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
@@ -271,6 +288,9 @@ export const api = {
   /** Why Novex Client can't run on this version and loader, or null if it can. */
   clientUnsupported: (version: string, loader: LoaderKind) =>
     call<string | null>("client_unsupported", { version, loader }),
+  bedrockStatus: () => call<BedrockStatus>("bedrock_status"),
+  bedrockSetConfig: (config: BedrockConfig) => call<BedrockStatus>("bedrock_set_config", { config }),
+  bedrockLaunch: () => call<string>("bedrock_launch"),
   clientStatus: (instanceId: string) => call<ClientStatus>("client_status", { instanceId }),
   clientSetEnabled: (instanceId: string, enabled: boolean) =>
     call<ClientStatus>("client_set_enabled", { instanceId, enabled }),

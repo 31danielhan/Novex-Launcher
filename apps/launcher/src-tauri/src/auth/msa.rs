@@ -16,17 +16,16 @@ const MC_LOGIN_URL: &str = "https://api.minecraftservices.com/authentication/log
 const MC_PROFILE_URL: &str = "https://api.minecraftservices.com/minecraft/profile";
 
 /// The Azure app (client) ID. Set NOVEX_MSA_CLIENT_ID at build time, or at runtime in dev.
+/// Novex's Azure app (personal Microsoft accounts, public client flows). A client ID isn't secret;
+/// NOVEX_MSA_CLIENT_ID, at runtime or build time, can still point a build at another app.
+const DEFAULT_CLIENT_ID: &str = "14e77a19-e626-4768-931f-b632dbde5f31";
+
 pub fn client_id() -> Result<String> {
-    std::env::var("NOVEX_MSA_CLIENT_ID")
+    Ok(std::env::var("NOVEX_MSA_CLIENT_ID")
         .ok()
         .or_else(|| option_env!("NOVEX_MSA_CLIENT_ID").map(str::to_string))
         .filter(|s| !s.is_empty())
-        .ok_or_else(|| {
-            msg(
-                "Microsoft sign-in isn't set up in this build. It needs an Azure app ID, set as \
-                 NOVEX_MSA_CLIENT_ID when the launcher is built.",
-            )
-        })
+        .unwrap_or_else(|| DEFAULT_CLIENT_ID.to_string()))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

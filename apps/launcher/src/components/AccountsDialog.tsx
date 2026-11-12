@@ -86,10 +86,20 @@ function offlineNameProblem(name: string, accounts: Account[]): string | null {
   return null;
 }
 
-function SignIn({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
+function SignIn({
+  another,
+  onDone,
+  onCancel,
+}: {
+  /** Whether a Microsoft account is already added, so this one should be a different one. */
+  another: boolean;
+  onDone: (account: Account) => void;
+  onCancel: () => void;
+}) {
   const [code, setCode] = useState<DeviceCode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -98,8 +108,8 @@ function SignIn({ onDone, onCancel }: { onDone: () => void; onCancel: () => void
         const c = await api.authStart();
         if (!alive) return;
         setCode(c);
-        await api.authFinish(c);
-        if (alive) onDone();
+        const account = await api.authFinish(c);
+        if (alive) onDone(account);
       } catch (e) {
         if (alive) setError(errorText(e));
       }
@@ -109,6 +119,16 @@ function SignIn({ onDone, onCancel }: { onDone: () => void; onCancel: () => void
       api.authCancel().catch(() => {});
     };
   }, [onDone]);
+
+  const copyLink = async () => {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code.verificationUri);
+      setLinkCopied(true);
+    } catch {
+      // Clipboard can be blocked; the link is the usual microsoft.com/link.
+    }
+  };
 
   const copyAndOpen = async () => {
     if (!code) return;
@@ -146,6 +166,16 @@ function SignIn({ onDone, onCancel }: { onDone: () => void; onCancel: () => void
           <p className="flex items-center justify-center gap-2 text-[12px] text-muted">
             <Loader2 size={14} className="animate-spin" /> {t("Waiting for you to finish signing in…")}
           </p>
+          {another && (
+            <div className="rounded-lg bg-fg/[0.04] p-3 text-left text-[12px] text-muted">
+              <p>
+                {t("Adding a different account? If the browser signs you in automatically, choose \"Use another account\" on the Microsoft page, or open the link in a private window.")}
+              </p>
+              <button type="button" onClick={copyLink} className="mt-1.5 font-medium text-accent hover:underline">
+                {linkCopied ? t("Link copied") : t("Copy link for a private window")}
+              </button>
+            </div>
+          )}
         </>
       ) : (
         <p className="flex items-center justify-center gap-2 py-6 text-[13px] text-muted">
@@ -166,6 +196,8 @@ export function AccountsDialog() {
   const [offlineName, setOfflineName] = useState("");
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const microsoft = accounts.filter((a) => a.kind === "microsoft");
   const trimmedName = offlineName.trim();
   const nameProblem = offlineNameProblem(trimmedName, accounts);
   // Too short is only worth saying once the name could be finished; bad characters right away.
@@ -184,6 +216,7 @@ export function AccountsDialog() {
 
   const close = () => {
     setSigningIn(false);
+    setNotice(null);
     setConfirmRemove(null);
     openAccounts(false);
   };
@@ -192,7 +225,14 @@ export function AccountsDialog() {
     <Dialog open={accountsOpen} onClose={close} title={t("Accounts")}>
       {signingIn ? (
         <SignIn
-          onDone={() => {
+          another={microsoft.length > 0}
+          onDone={(account) => {
+            const already = accounts.some((a) => a.uuid === account.uuid);
+            setNotice(
+              already
+                ? t("{name} was already added, so it was just refreshed. To add a different account, choose \"Use another account\" on the Microsoft page.", { name: account.name })
+                : t("Added {name}. It's now the active account.", { name: account.name }),
+            );
             setSigningIn(false);
             refreshAccounts();
           }}
@@ -306,12 +346,29 @@ export function AccountsDialog() {
           </div>
 
           <div className="hairline space-y-2 border-t pt-4">
-            <p className="text-[12px] font-medium text-muted">{t("Microsoft account")}</p>
-            <Button icon={LogIn} className="w-full" onClick={() => setSigningIn(true)}>
-              {t("Sign in with Microsoft")}
+            <p className="text-[12px] font-medium text-muted">
+              {microsoft.length > 1
+                ? t("Microsoft accounts ({n})", { n: microsoft.length })
+                : t("Microsoft account")}
+            </p>
+            <Button
+              icon={LogIn}
+              className="w-full"
+              onClick={() => {
+                setNotice(null);
+                setSigningIn(true);
+              }}
+            >
+              {microsoft.length > 0 ? t("Add another Microsoft account") : t("Sign in with Microsoft")}
             </Button>
+            {microsoft.length > 0 && (
+              <p className="text-[12px] text-muted">
+                {t("Add as many as you like, then click one above to switch to it.")}
+              </p>
+            )}
           </div>
 
+          {notice && <p className="text-[13px] text-muted">{notice}</p>}
           {error && <p className="text-[13px] text-danger">{error}</p>}
         </div>
       )}

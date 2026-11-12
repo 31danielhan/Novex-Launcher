@@ -28,20 +28,28 @@ npm run tauri dev
 
 `npm run dev` alone opens the UI in a browser without the Rust backend.
 
-**Offline accounts** (Accounts → "Offline account") work once a Microsoft account that owns Minecraft is signed in, as in other launchers. Dev builds allow them without one, for testing.
+**Offline accounts** (Accounts → "Offline account") need only a player name. They play singleplayer, LAN and servers in offline mode; online servers need a Microsoft account.
 
 ## Microsoft sign-in setup
 
 1. Register an app at [Azure Portal → App registrations](https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade). For supported account types, choose **Personal Microsoft accounts only**.
 2. Under **Authentication**, set **Allow public client flows** to **Yes** (sign-in uses the device-code flow).
 3. Apply for Minecraft API access for that app ID: <https://aka.ms/mce-reviewappid>. Until Mojang approves it, the final step of sign-in fails.
-4. Build or run with the client ID:
+Novex's own approved client ID is built in (`DEFAULT_CLIENT_ID` in `apps/launcher/src-tauri/src/auth/msa.rs`), so sign-in works without any setup. A client ID isn't a secret. To use your own app instead, set `NOVEX_MSA_CLIENT_ID` when running or building:
 
 ```bash
 NOVEX_MSA_CLIENT_ID=<your-client-id> npm run tauri dev
 ```
 
-For release builds, add `NOVEX_MSA_CLIENT_ID` as a GitHub Actions secret. `release.yml` passes it to the build.
+Several Microsoft accounts can be added; click one in Accounts to switch.
+
+## Java
+
+Each Minecraft version gets the Java it needs (8, 17, 21 or 25), downloaded automatically from Mojang. Where Mojang has no Java for the computer (Linux on ARM, for example), the same version comes from [Eclipse Temurin](https://adoptium.net), checked against its published SHA-256. A custom Java path in Settings or on an instance overrides this.
+
+## Bedrock (beta)
+
+The Bedrock page starts Minecraft: Bedrock Edition on Windows, installed from the Microsoft Store or the Xbox app (Novex never downloads the game). With the client turned on, it loads [Latite](https://github.com/LatiteClient/Latite), downloaded from its official GitHub release and checked against GitHub's SHA-256, or a DLL of your own. Only 64-bit Windows DLLs are loaded, copied into Novex's folder first, and only into `Minecraft.Windows.exe` (`apps/launcher/src-tauri/src/bedrock.rs`). On macOS and Linux the page says Bedrock is only available on Windows.
 
 ## Novex Client
 
@@ -172,6 +180,8 @@ Novex Launcher and Novex Client are free software under the [GNU General Public 
 - [Poppins](https://github.com/itfoundry/Poppins) by Indian Type Foundry (SIL Open Font License 1.1): the in-game menu and Poly theme font.
 - [Lucide](https://lucide.dev) (ISC License): the in-game menu's line icons, shipped as a font cut down to the icons Novex uses.
 - [mediaremote-adapter](https://github.com/ungive/mediaremote-adapter): the idea behind the Now playing module's macOS helper (`apps/client/tools/now-playing`), which reads what's playing by loading a small library into `/usr/bin/perl`. Novex's helper is its own code.
+- [Latite](https://github.com/LatiteClient/Latite): the Bedrock client Novex can download and load on Windows. Novex doesn't ship it.
+- [Eclipse Temurin](https://adoptium.net) by Adoptium: Java for computers Mojang has none for, downloaded when needed.
 - Version backgrounds: screenshots by Xbox México and Xbox MENA from Wikimedia Commons, CC BY 3.0.
 
 Novex is not affiliated with or endorsed by Mojang, Microsoft or Polyfrost.
