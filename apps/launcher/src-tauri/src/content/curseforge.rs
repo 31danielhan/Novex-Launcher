@@ -1,5 +1,8 @@
 //! CurseForge API v1. Needs an API key from https://console.curseforge.com, set as
 //! NOVEX_CURSEFORGE_API_KEY at build time (or at runtime in dev), or saved in Settings.
+//!
+//! The build-time key is kept scrambled in the app (see build.rs) and only put back together when
+//! a request needs it. It never appears in the source, and the UI never shows it.
 
 use reqwest::{Client, Url};
 use serde::de::DeserializeOwned;
@@ -24,13 +27,23 @@ pub fn set_saved_key(key: Option<String>) {
     *SAVED_KEY.write().unwrap() = key.map(|k| k.trim().to_string()).filter(|k| !k.is_empty());
 }
 
+mod built_in {
+    include!(concat!(env!("OUT_DIR"), "/curseforge_key.rs"));
+
+    /// The key this build was made with, if any.
+    pub fn key() -> Option<String> {
+        let bytes: Vec<u8> = SCRAMBLED.iter().zip(PAD).map(|(s, p)| s ^ p).collect();
+        String::from_utf8(bytes).ok().filter(|k| !k.is_empty())
+    }
+}
+
 pub fn api_key() -> Option<String> {
     SAVED_KEY
         .read()
         .unwrap()
         .clone()
         .or_else(|| std::env::var("NOVEX_CURSEFORGE_API_KEY").ok())
-        .or_else(|| option_env!("NOVEX_CURSEFORGE_API_KEY").map(str::to_string))
+        .or_else(built_in::key)
         .filter(|k| !k.trim().is_empty())
 }
 
